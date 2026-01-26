@@ -2,6 +2,7 @@ import { Campaign, CampaignStatus, Message, MessageStatus } from '../types';
 
 interface CreateCampaignInput {
   name: string;
+  instanceId: string;
   templateName: string;
   recipients: number;
   selectedContacts?: { name: string; phone: string }[];
@@ -136,7 +137,7 @@ export const campaignService = {
   },
 
   create: async (input: CreateCampaignInput): Promise<Campaign> => {
-    const { name, templateName, recipients, selectedContacts, selectedContactIds, scheduledAt, templateVariables } = input;
+    const { name, instanceId, templateName, recipients, selectedContacts, selectedContactIds, scheduledAt, templateVariables } = input;
 
     // 1. Create campaign in Database (source of truth) with contacts
     const response = await fetch('/api/campaigns', {
@@ -144,6 +145,7 @@ export const campaignService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
+        instanceId, // Associate with specific instance
         templateName,
         recipients,
         scheduledAt,

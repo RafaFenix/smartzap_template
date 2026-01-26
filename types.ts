@@ -60,8 +60,20 @@ export interface TemplateButton {
   flow_id?: string;
 }
 
+export interface Instance {
+  id: string;
+  name: string;
+  phoneNumberId: string;
+  businessAccountId?: string;
+  accessToken: string;
+  status: 'active' | 'disconnected' | 'error';
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Campaign {
   id: string;
+  instanceId: string;
   name: string;
   status: CampaignStatus;
   recipients: number;
@@ -84,6 +96,7 @@ export interface Campaign {
 
 export interface Contact {
   id: string;
+  instanceId: string;
   name?: string;
   phone: string;
   status: ContactStatus;
@@ -221,6 +234,7 @@ export type BotStatus = 'active' | 'inactive' | 'draft';
 // Bot Entity
 export interface Bot {
   id: string;
+  instanceId: string;
   name: string;
   phoneNumberId: string;
   flowId?: string;
@@ -518,6 +532,7 @@ export interface BotConversation {
 // AI Agent
 export interface AIAgent {
   id: string;
+  instanceId?: string;
   name: string;
   systemPrompt: string;
   model: 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash';

@@ -28,8 +28,9 @@ export interface ImportResult {
  * All data is stored in Main Database (source of truth)
  */
 export const contactService = {
-  getAll: async (): Promise<Contact[]> => {
-    const response = await fetch('/api/contacts');
+  getAll: async (instanceId?: string): Promise<Contact[]> => {
+    const url = instanceId ? `/api/contacts?instanceId=${instanceId}` : '/api/contacts';
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error('Falha ao buscar contatos');
     }
@@ -134,6 +135,7 @@ export const contactService = {
    */
   importFromContent: async (
     content: string,
+    instanceId: string,
     options?: ParseOptions
   ): Promise<ImportResult> => {
     logger.info('Starting contact import', { contentLength: content.length });
@@ -149,6 +151,7 @@ export const contactService = {
       phone: c.phone,
       status: ContactStatus.OPT_IN,
       tags: [] as string[],
+      instanceId,
     }));
 
     // Import via API
@@ -181,6 +184,7 @@ export const contactService = {
    */
   importFromFile: async (
     file: File,
+    instanceId: string,
     options?: ParseOptions
   ): Promise<ImportResult> => {
     const parseResult = await parseContactsFromFile(file, options);
@@ -190,6 +194,7 @@ export const contactService = {
       phone: c.phone,
       status: ContactStatus.OPT_IN,
       tags: [] as string[],
+      instanceId,
     }));
 
     const response = await fetch('/api/contacts/import', {
