@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown, PlusCircle, Smartphone } from 'lucide-react';
+import { Check, ChevronsUpDown, PlusCircle, Smartphone, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useInstance } from '@/components/providers/InstanceProvider';
 import { Button } from '@/components/ui/button';
@@ -90,6 +90,13 @@ export function InstanceSwitcher({ className }: { className?: string }) {
                     <CommandSeparator />
                     <CommandList>
                         <CommandGroup>
+                            <CommandItem onSelect={() => {
+                                setOpen(false);
+                                router.push('/settings/instances');
+                            }}>
+                                <Settings className="mr-2 h-5 w-5" />
+                                Gerenciar Números
+                            </CommandItem>
                             <CommandItem onSelect={handleCreateNew}>
                                 <PlusCircle className="mr-2 h-5 w-5" />
                                 Add New Number
