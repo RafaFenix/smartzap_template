@@ -64,6 +64,7 @@ export const CreateCampaignSchema = z.object({
       phone: z.string().min(1),
     })
   ).optional(),
+  instanceId: z.string().min(1, 'Instance ID é obrigatório'),
 })
 
 export const UpdateCampaignSchema = z.object({

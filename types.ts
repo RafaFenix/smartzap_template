@@ -444,6 +444,7 @@ export interface FlowEdge {
 // Flow Entity
 export interface Flow {
   id: string;
+  instanceId: string;
   botId: string;
   name: string;
   nodes: FlowNode[];
@@ -507,6 +508,7 @@ export interface ConversationVariable {
 // Bot Conversation
 export interface BotConversation {
   id: string;
+  instanceId: string;
   botId: string;
   botName?: string;
   contactPhone: string;
@@ -532,7 +534,7 @@ export interface BotConversation {
 // AI Agent
 export interface AIAgent {
   id: string;
-  instanceId?: string;
+  instanceId: string;
   name: string;
   systemPrompt: string;
   model: 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash';

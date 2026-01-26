@@ -21,13 +21,17 @@ import { botConversationDb, botDb } from '@/lib/supabase-db'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId') || undefined
     const status = searchParams.get('status')
     const botId = searchParams.get('botId')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // Buscar conversas
-    const conversations = await botConversationDb.getAll()
+    const conversations = await botConversationDb.getAll(instanceId, {
+      botId: botId || undefined,
+      status: status as any || undefined,
+    })
 
     // Aplicar filtros
     let filtered = conversations

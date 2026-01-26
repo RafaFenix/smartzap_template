@@ -881,11 +881,15 @@ export const botDb = {
 // ============================================================================
 
 export const flowDb = {
-    getAll: async (botId?: string): Promise<Flow[]> => {
+    getAll: async (instanceId?: string, botId?: string): Promise<Flow[]> => {
         let query = supabase
             .from('flows')
             .select('*')
             .order('created_at', { ascending: false })
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
 
         if (botId) {
             query = query.eq('bot_id', botId)
@@ -906,6 +910,7 @@ export const flowDb = {
             isMainFlow: row.is_main_flow,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
+            instanceId: row.instance_id,
         }))
     },
 
@@ -929,6 +934,7 @@ export const flowDb = {
             isMainFlow: data.is_main_flow,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
@@ -956,10 +962,12 @@ export const flowDb = {
             isMainFlow: data.is_main_flow,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
     create: async (data: {
+        instanceId: string
         botId: string
         name: string
         nodes?: FlowNode[]
@@ -982,6 +990,7 @@ export const flowDb = {
                 version: 1,
                 status: 'draft',
                 is_main_flow: data.isMainFlow || false,
+                instance_id: data.instanceId,
                 created_at: now,
                 updated_at: now,
             })
@@ -999,6 +1008,7 @@ export const flowDb = {
             isMainFlow: data.isMainFlow,
             createdAt: now,
             updatedAt: now,
+            instanceId: data.instanceId,
         }
     },
 
@@ -1072,6 +1082,7 @@ export const flowDb = {
         if (!original) return null
 
         return flowDb.create({
+            instanceId: original.instanceId,
             botId: original.botId,
             name: `${original.name} (cópia)`,
             nodes: original.nodes,
@@ -1086,7 +1097,7 @@ export const flowDb = {
 // ============================================================================
 
 export const botConversationDb = {
-    getAll: async (options?: {
+    getAll: async (instanceId?: string, options?: {
         botId?: string
         status?: ConversationStatus
         operatorId?: string
@@ -1101,6 +1112,7 @@ export const botConversationDb = {
             .order('last_message_at', { ascending: false })
             .limit(options?.limit || 50)
 
+        if (instanceId) query = query.eq('instance_id', instanceId)
         if (options?.botId) query = query.eq('bot_id', options.botId)
         if (options?.status) query = query.eq('status', options.status)
         if (options?.operatorId) query = query.eq('assigned_operator_id', options.operatorId)
@@ -1122,6 +1134,7 @@ export const botConversationDb = {
             lastMessageAt: row.last_message_at,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
+            instanceId: row.instance_id,
         }))
     },
 
@@ -1150,6 +1163,7 @@ export const botConversationDb = {
             lastMessageAt: data.last_message_at,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
@@ -1182,10 +1196,12 @@ export const botConversationDb = {
             lastMessageAt: data.last_message_at,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
     create: async (data: {
+        instanceId: string
         botId: string
         contactPhone: string
         contactName?: string
@@ -1197,6 +1213,7 @@ export const botConversationDb = {
             .from('bot_conversations')
             .insert({
                 id,
+                instance_id: data.instanceId,
                 bot_id: data.botId,
                 contact_phone: data.contactPhone,
                 contact_name: data.contactName,
@@ -1219,6 +1236,7 @@ export const botConversationDb = {
             lastMessageAt: now,
             createdAt: now,
             updatedAt: now,
+            instanceId: data.instanceId,
         }
     },
 
@@ -1452,13 +1470,17 @@ export const conversationVariableDb = {
 // ============================================================================
 
 export const aiAgentDb = {
-    getAll: async (): Promise<AIAgent[]> => {
-        const { data, error } = await supabase
+    getAll: async (instanceId?: string): Promise<AIAgent[]> => {
+        let query = supabase
             .from('ai_agents')
             .select('*')
             .order('created_at', { ascending: false })
 
-        if (error) throw error
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         return (data || []).map(row => ({
             id: row.id,
@@ -1469,6 +1491,7 @@ export const aiAgentDb = {
             temperature: Number(row.temperature),
             createdAt: row.created_at,
             updatedAt: row.updated_at,
+            instanceId: row.instance_id,
         }))
     },
 
@@ -1490,10 +1513,12 @@ export const aiAgentDb = {
             temperature: Number(data.temperature),
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
     create: async (data: {
+        instanceId: string
         name: string
         systemPrompt: string
         model?: AIAgent['model']
@@ -1512,6 +1537,7 @@ export const aiAgentDb = {
                 model: data.model || 'gemini-1.5-flash',
                 max_tokens: data.maxTokens || 500,
                 temperature: data.temperature || 0.7,
+                instance_id: data.instanceId,
                 created_at: now,
                 updated_at: now,
             })
@@ -1527,6 +1553,7 @@ export const aiAgentDb = {
             temperature: data.temperature || 0.7,
             createdAt: now,
             updatedAt: now,
+            instanceId: data.instanceId,
         }
     },
 

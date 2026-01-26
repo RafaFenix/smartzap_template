@@ -13,9 +13,11 @@ import { aiAgentDb } from '@/lib/supabase-db'
  * 
  * Retorna lista de todos os agentes de IA
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const agents = await aiAgentDb.getAll()
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId') || undefined
+    const agents = await aiAgentDb.getAll(instanceId)
 
     return NextResponse.json({
       agents,
@@ -95,6 +97,7 @@ export async function POST(request: NextRequest) {
       model,
       maxTokens,
       temperature,
+      instanceId: body.instanceId,
     })
 
     return NextResponse.json(agent, { status: 201 })
