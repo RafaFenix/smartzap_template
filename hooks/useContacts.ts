@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { contactService } from '../services';
 import { Contact, ContactStatus } from '../types';
+import { useInstance } from '@/components/providers/InstanceProvider';
 
 const ITEMS_PER_PAGE = 10;
 
 export const useContactsController = () => {
   const queryClient = useQueryClient();
+  const { currentInstance } = useInstance();
 
   // UI State
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,9 +31,10 @@ export const useContactsController = () => {
 
   // --- Queries ---
   const contactsQuery = useQuery({
-    queryKey: ['contacts'],
-    queryFn: contactService.getAll,
+    queryKey: ['contacts', currentInstance?.id],
+    queryFn: () => contactService.getAll(currentInstance?.id),
     staleTime: 30 * 1000,  // 30 segundos
+    enabled: !!currentInstance?.id,
     select: (data) => {
       const normalized: Record<string, Contact> = {};
       data.forEach(c => normalized[c.id] = c);
@@ -61,7 +64,7 @@ export const useContactsController = () => {
   };
 
   const addMutation = useMutation({
-    mutationFn: contactService.add,
+    mutationFn: (data: any) => contactService.add({ ...data, instanceId: currentInstance?.id }),
     onSuccess: () => {
       invalidateAll();
       setIsAddModalOpen(false);
@@ -106,7 +109,7 @@ export const useContactsController = () => {
   });
 
   const importMutation = useMutation({
-    mutationFn: contactService.import,
+    mutationFn: (contacts: any[]) => contactService.import(contacts.map(c => ({ ...c, instanceId: currentInstance?.id }))),
     onSuccess: (count) => {
       invalidateAll();
       toast.success(`${count} contatos importados com sucesso!`);
@@ -116,7 +119,10 @@ export const useContactsController = () => {
 
   // New: Import from file with validation report
   const importFromFileMutation = useMutation({
-    mutationFn: (file: File) => contactService.importFromFile(file),
+    mutationFn: (file: File) => {
+      if (!currentInstance?.id) throw new Error('Selecione uma instância');
+      return contactService.importFromFile(file, currentInstance.id);
+    },
     onSuccess: (result) => {
       invalidateAll();
       setImportReport(result.report);
