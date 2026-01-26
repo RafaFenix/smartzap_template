@@ -424,6 +424,7 @@ const OnboardingOverlay = ({
 
 import { PrefetchLink } from '@/components/ui/PrefetchLink'
 import { AccountAlertBanner } from '@/components/ui/AccountAlertBanner'
+import { InstanceSwitcher } from '@/components/InstanceSwitcher'
 
 interface SidebarItemProps {
     href: string
@@ -532,9 +533,22 @@ export function DashboardShell({
     })
 
     const needsSetup = !healthStatus ||
-        healthStatus.services.database?.status !== 'ok' ||
-        healthStatus.services.redis.status !== 'ok' ||
-        healthStatus.services.qstash.status !== 'ok'
+        healthStatus.services.database?.status !== 'ok'
+
+    // Show onboarding overlay ONLY if critical infrastructure (DB) is missing
+    if (needsSetup) {
+        return (
+            <OnboardingOverlay
+                health={healthStatus || null}
+                isLoading={isHealthFetching}
+                onRefresh={() => refetchHealth()}
+            />
+        )
+    }
+
+    const missingServices = []
+    if (healthStatus?.services.redis?.status !== 'ok') missingServices.push('Redis')
+    if (healthStatus?.services.qstash?.status !== 'ok') missingServices.push('QStash')
 
     const navItems = [
         { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -558,17 +572,6 @@ export function DashboardShell({
         if (path.startsWith('/contacts')) return 'Contatos'
         if (path.startsWith('/settings')) return 'Configurações'
         return 'App'
-    }
-
-    // Show onboarding overlay if setup is needed
-    if (needsSetup) {
-        return (
-            <OnboardingOverlay
-                health={healthStatus || null}
-                isLoading={isHealthFetching}
-                onRefresh={() => refetchHealth()}
-            />
-        )
     }
 
     return (
@@ -603,6 +606,24 @@ export function DashboardShell({
                             <X size={20} className="text-gray-400" />
                         </button>
                     </div>
+
+                    {/* Instance Switcher */}
+                    <div className="mb-6 px-1">
+                        <InstanceSwitcher className="w-full" />
+                    </div>
+
+                    {/* Missing Services Warning */}
+                    {missingServices.length > 0 && (
+                        <div className="mb-4 mx-1 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                            <h4 className="flex items-center gap-2 text-xs font-bold text-amber-400 mb-1">
+                                <AlertTriangle size={12} />
+                                Configuração Pendente
+                            </h4>
+                            <p className="text-[10px] text-amber-200/70">
+                                {missingServices.join(', ')} não configurado(s). Algumas funções podem falhar.
+                            </p>
+                        </div>
+                    )}
 
                     {/* Nav */}
                     <nav className="flex-1 space-y-6 overflow-y-auto no-scrollbar">
