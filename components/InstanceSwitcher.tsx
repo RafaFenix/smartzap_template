@@ -32,11 +32,15 @@ export function InstanceSwitcher({ className }: { className?: string }) {
         router.push('/settings/connect'); // Assuming this is the route to add new instance
     };
 
+    const handleManage = () => {
+        router.push('/settings/instances');
+    };
+
     if (!currentInstance) {
         return (
-            <Button variant="outline" className="w-[200px] justify-between" onClick={handleCreateNew}>
+            <Button variant="outline" className="w-[200px] justify-between" onClick={handleManage}>
                 <span className="flex items-center gap-2">
-                    <PlusCircle className="h-4 w-4" /> Connect Number
+                    <Smartphone className="h-4 w-4" /> Gerenciar Números
                 </span>
             </Button>
         )
