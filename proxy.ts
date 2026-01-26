@@ -34,16 +34,18 @@ export async function proxy(request: NextRequest) {
     const isSetupComplete = !!process.env.SETUP_COMPLETE
 
     // If not configured and not already on setup, redirect immediately
+    // BUT allow /settings routes for instance management
     if (!hasMasterPassword) {
-        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api')) {
+        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api') && !pathname.startsWith('/settings')) {
             const setupUrl = new URL('/setup/start', request.url)
             return NextResponse.redirect(setupUrl)
         }
     }
 
     // If configured but setup not complete (company info missing), go to wizard
+    // BUT allow /settings routes for instance management
     if (hasMasterPassword && !isSetupComplete) {
-        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api') && !pathname.startsWith('/debug')) {
+        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api') && !pathname.startsWith('/debug') && !pathname.startsWith('/settings')) {
             const wizardUrl = new URL('/setup/wizard?resume=true', request.url)
             return NextResponse.redirect(wizardUrl)
         }
