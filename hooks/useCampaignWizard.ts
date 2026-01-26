@@ -8,10 +8,12 @@ import { Template, TestContact } from '../types';
 import { useAccountLimits } from './useAccountLimits';
 import { CampaignValidation } from '../lib/meta-limits';
 import { countTemplateVariables } from '../lib/template-validator';
+import { useInstance } from '@/components/providers/InstanceProvider';
 
 export const useCampaignWizardController = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { currentInstance } = useInstance();
 
   const [step, setStep] = useState(1);
 
@@ -20,10 +22,10 @@ export const useCampaignWizardController = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [recipientSource, setRecipientSource] = useState<'all' | 'specific' | 'test' | null>(null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
-  
+
   // Template Variables State - for {{2}}, {{3}}, etc. ({{1}} is always the contact name)
   const [templateVariables, setTemplateVariables] = useState<string[]>([]);
-  
+
   // Scheduling State
   const [scheduledAt, setScheduledAt] = useState<string | null>(null);
   const [isScheduling, setIsScheduling] = useState(false);
@@ -37,8 +39,9 @@ export const useCampaignWizardController = () => {
 
   // --- Queries ---
   const contactsQuery = useQuery({
-    queryKey: ['contacts'],
-    queryFn: contactService.getAll,
+    queryKey: ['contacts', currentInstance?.id],
+    queryFn: () => contactService.getAll(currentInstance?.id),
+    enabled: !!currentInstance?.id,
   });
 
   const templatesQuery = useQuery({
@@ -81,7 +84,7 @@ export const useCampaignWizardController = () => {
     onMutate: async (input) => {
       // Generate temp ID for immediate navigation
       const tempId = `temp_${Date.now()}`;
-      
+
       // 🚀 PRE-SET cache with PENDING messages BEFORE API call
       const contacts = input.selectedContacts || [];
       const pendingMessages = contacts.map((contact, index) => ({
@@ -92,7 +95,7 @@ export const useCampaignWizardController = () => {
         status: 'Pending' as const,
         sentAt: '-',
       }));
-      
+
       // Pre-populate the campaign in cache
       const pendingCampaign = {
         id: tempId,
@@ -103,18 +106,18 @@ export const useCampaignWizardController = () => {
         status: 'SENDING' as const,
         createdAt: new Date().toISOString(),
       };
-      
+
       queryClient.setQueryData(['campaign', tempId], pendingCampaign);
       queryClient.setQueryData(['campaignMessages', tempId], pendingMessages);
-      
+
       // Navigate IMMEDIATELY (before API responds)
       navigate(`/campaigns/${tempId}`);
-      
+
       return { tempId };
     },
     onSuccess: (campaign, _input, context) => {
       const tempId = context?.tempId;
-      
+
       // Copy cached data to real campaign ID
       if (tempId) {
         const cachedMessages = queryClient.getQueryData(['campaignMessages', tempId]);
@@ -125,12 +128,12 @@ export const useCampaignWizardController = () => {
         queryClient.removeQueries({ queryKey: ['campaign', tempId] });
         queryClient.removeQueries({ queryKey: ['campaignMessages', tempId] });
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      
+
       // Navigate to real campaign (replaces temp URL)
       navigate(`/campaigns/${campaign.id}`, { replace: true });
-      
+
       toast.success('Campanha criada e disparada com sucesso!');
     },
     onError: (_error, _input, context) => {
@@ -148,22 +151,22 @@ export const useCampaignWizardController = () => {
   const allContacts = contactsQuery.data || [];
   const totalContacts = allContacts.length;
   const selectedContacts = allContacts.filter(c => selectedContactIds.includes(c.id));
-  
+
   // Calculate recipient count - 1 for test mode, otherwise selected contacts
   const recipientCount = recipientSource === 'test' && testContact ? 1 : selectedContacts.length;
-  
+
   // Get contacts for sending - test contact or selected contacts
-  const contactsForSending = recipientSource === 'test' && testContact 
+  const contactsForSending = recipientSource === 'test' && testContact
     ? [{ name: testContact.name || testContact.phone, phone: testContact.phone }]
     : selectedContacts.map(c => ({ name: c.name || c.phone, phone: c.phone }));
-  
+
   const availableTemplates = templatesQuery.data || [];
   const selectedTemplate = availableTemplates.find(t => t.id === selectedTemplateId);
-  
+
   // Calculate all template variables with detailed info about where each is used
   const templateVariableInfo = useMemo(() => {
     if (!selectedTemplate) return { body: [], header: [], buttons: [], totalExtra: 0 };
-    
+
     const components = selectedTemplate.components || [];
     const result = {
       body: [] as { index: number; placeholder: string; context: string }[],
@@ -171,7 +174,7 @@ export const useCampaignWizardController = () => {
       buttons: [] as { index: number; buttonIndex: number; buttonText: string; context: string }[],
       totalExtra: 0,
     };
-    
+
     // Parse body variables
     const bodyComponent = components.find(c => c.type === 'BODY');
     if (bodyComponent?.text) {
@@ -180,38 +183,38 @@ export const useCampaignWizardController = () => {
         const varNum = parseInt(match.replace(/[{}]/g, ''));
         if (varNum === 1) {
           // {{1}} is always the contact name - automatic
-          result.body.push({ 
-            index: varNum, 
-            placeholder: match, 
-            context: 'Nome do contato (automático)' 
+          result.body.push({
+            index: varNum,
+            placeholder: match,
+            context: 'Nome do contato (automático)'
           });
         } else {
           // {{2}}, {{3}}, etc. need user input
-          result.body.push({ 
-            index: varNum, 
-            placeholder: match, 
-            context: `Variável ${varNum} do texto` 
+          result.body.push({
+            index: varNum,
+            placeholder: match,
+            context: `Variável ${varNum} do texto`
           });
           result.totalExtra++;
         }
       });
     }
-    
+
     // Parse header variables (text headers only)
     const headerComponent = components.find(c => c.type === 'HEADER');
     if (headerComponent?.format === 'TEXT' && headerComponent?.text) {
       const matches = headerComponent.text.match(/\{\{(\d+)\}\}/g) || [];
       matches.forEach((match) => {
         const varNum = parseInt(match.replace(/[{}]/g, ''));
-        result.header.push({ 
-          index: varNum, 
-          placeholder: match, 
-          context: 'Variável do cabeçalho' 
+        result.header.push({
+          index: varNum,
+          placeholder: match,
+          context: 'Variável do cabeçalho'
         });
         result.totalExtra++;
       });
     }
-    
+
     // Parse button URL variables
     const buttonsComponent = components.find(c => c.type === 'BUTTONS');
     if (buttonsComponent?.buttons) {
@@ -231,13 +234,13 @@ export const useCampaignWizardController = () => {
         }
       });
     }
-    
+
     return result;
   }, [selectedTemplate]);
-  
+
   // For backward compatibility - count of extra variables (excluding {{1}} = contact name)
   const templateVariableCount = templateVariableInfo.totalExtra;
-  
+
   // Reset template variables when template changes
   useEffect(() => {
     setTemplateVariables(Array(templateVariableCount).fill(''));
@@ -292,27 +295,33 @@ export const useCampaignWizardController = () => {
         return;
       }
     }
-    
+
     // Validate campaign against account limits
     const validation = validate(recipientCount);
     setValidationResult(validation);
-    
+
     // If campaign is blocked, show modal with explanation
     if (!validation.canSend) {
       setShowBlockModal(true);
       return;
     }
-    
+
     // Show warnings if any (but allow to proceed)
     if (validation.warnings.length > 0) {
       validation.warnings.forEach(warning => {
         toast.warning(warning);
       });
     }
-    
+
     // Proceed with campaign creation
+    if (!currentInstance) {
+      toast.error('Nenhuma instância selecionada');
+      return;
+    }
+
     createCampaignMutation.mutate({
       name: recipientSource === 'test' ? `[TESTE] ${name}` : name,
+      instanceId: currentInstance.id,
       templateName: selectedTemplate?.name || 'unknown_template',
       recipients: recipientCount,
       selectedContacts: contactsForSending,
@@ -321,7 +330,7 @@ export const useCampaignWizardController = () => {
       templateVariables: templateVariables.length > 0 ? templateVariables : undefined,
     });
   };
-  
+
   // Schedule campaign for later
   const handleSchedule = (scheduleTime: string) => {
     setScheduledAt(scheduleTime);
@@ -356,28 +365,28 @@ export const useCampaignWizardController = () => {
     handleSend,
     isCreating: createCampaignMutation.isPending,
     isLoading: contactsQuery.isLoading || templatesQuery.isLoading || limitsLoading || settingsQuery.isLoading,
-    
+
     // Test Contact
     testContact,
-    
+
     // Template Variables (for {{2}}, {{3}}, etc.)
     templateVariables,
     setTemplateVariables,
     templateVariableCount,
     templateVariableInfo, // Detailed info about each variable location
-    
+
     // Account Limits & Validation state
     accountLimits: limits,
     isBlockModalOpen: showBlockModal,
     setIsBlockModalOpen: setShowBlockModal,
     blockReason: validationResult,
     tierName,
-    
+
     // Live validation (real-time as user selects)
     liveValidation,
     isOverLimit,
     currentLimit,
-    
+
     // Scheduling
     scheduledAt,
     setScheduledAt,
