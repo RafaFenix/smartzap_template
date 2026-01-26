@@ -65,7 +65,8 @@ export async function POST(request: Request) {
       templateName: data.templateName,
       recipients: data.recipients,
       scheduledAt: data.scheduledAt,
-      templateVariables: data.templateVariables,  // Now properly validated by Zod
+      templateVariables: data.templateVariables,
+      instanceId: data.instanceId,
     })
 
     // If contacts were provided, add them to campaign_contacts
