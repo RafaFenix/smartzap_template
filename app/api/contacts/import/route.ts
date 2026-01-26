@@ -28,6 +28,7 @@ export async function POST(request: Request) {
       phone: c.phone,
       status: ContactStatus.OPT_IN,
       tags: c.tags || [],
+      instanceId: c.instanceId,
     }))
 
     const imported = await contactDb.import(contactsWithDefaults)

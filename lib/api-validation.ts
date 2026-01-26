@@ -22,6 +22,7 @@ export const CreateContactSchema = z.object({
   status: z.nativeEnum(ContactStatus).optional().default(ContactStatus.OPT_IN),
   tags: z.array(z.string().max(50)).max(20, 'Máximo de 20 tags').optional().default([]),
   notes: z.string().max(500, 'Notas muito longas').optional(),
+  instanceId: z.string().min(1, 'Instance ID é obrigatório'),
 })
 
 export const UpdateContactSchema = CreateContactSchema.partial()
@@ -33,6 +34,7 @@ export const ImportContactsSchema = z.object({
       phone: z.string().min(1, 'Telefone é obrigatório'),
       email: z.string().email().optional().nullable(),
       tags: z.array(z.string()).optional(),
+      instanceId: z.string().optional(),
     })
   )
     .min(1, 'Lista de contatos vazia')

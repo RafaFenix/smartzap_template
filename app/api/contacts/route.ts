@@ -14,9 +14,11 @@ export const revalidate = 0
  * GET /api/contacts
  * List all contacts from Turso
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const contacts = await contactDb.getAll()
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId') || undefined
+    const contacts = await contactDb.getAll(instanceId)
     return NextResponse.json(contacts, {
       headers: {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60'

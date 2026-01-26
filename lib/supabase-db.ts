@@ -71,6 +71,7 @@ export const campaignDb = {
             scheduledAt: row.scheduled_date,
             startedAt: row.started_at,
             completedAt: row.completed_at,
+            instanceId: row.instance_id,
         }))
     },
 
@@ -98,6 +99,7 @@ export const campaignDb = {
             scheduledAt: data.scheduled_date,
             startedAt: data.started_at,
             completedAt: data.completed_at,
+            instanceId: data.instance_id,
         }
     },
 
@@ -107,6 +109,7 @@ export const campaignDb = {
         recipients: number
         scheduledAt?: string
         templateVariables?: string[]
+        instanceId: string
     }): Promise<Campaign> => {
         const id = generateId()
         const now = new Date().toISOString()
@@ -128,6 +131,7 @@ export const campaignDb = {
                 created_at: now,
                 scheduled_date: campaign.scheduledAt,
                 started_at: campaign.scheduledAt ? null : now,
+                instance_id: campaign.instanceId,
             })
             .select()
             .single()
@@ -148,6 +152,7 @@ export const campaignDb = {
             createdAt: now,
             scheduledAt: campaign.scheduledAt,
             startedAt: campaign.scheduledAt ? undefined : now,
+            instanceId: campaign.instanceId,
         }
     },
 
@@ -253,11 +258,17 @@ export const campaignDb = {
 // ============================================================================
 
 export const contactDb = {
-    getAll: async (): Promise<Contact[]> => {
-        const { data, error } = await supabase
+    getAll: async (instanceId?: string): Promise<Contact[]> => {
+        let query = supabase
             .from('contacts')
             .select('*')
             .order('created_at', { ascending: false })
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -273,6 +284,7 @@ export const contactDb = {
                 : (row.created_at ? new Date(row.created_at).toLocaleDateString() : '-'),
             createdAt: row.created_at,
             updatedAt: row.updated_at,
+            instanceId: row.instance_id,
         }))
     },
 
@@ -296,15 +308,19 @@ export const contactDb = {
                 : (data.created_at ? new Date(data.created_at).toLocaleDateString() : '-'),
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
     add: async (contact: Omit<Contact, 'id' | 'lastActive'>): Promise<Contact> => {
-        // Check if contact already exists by phone
+        if (!contact.instanceId) throw new Error('Instance ID is required')
+
+        // Check if contact already exists by phone AND instance
         const { data: existing } = await supabase
             .from('contacts')
             .select('*')
             .eq('phone', contact.phone)
+            .eq('instance_id', contact.instanceId)
             .single()
 
         const now = new Date().toISOString()
@@ -335,6 +351,7 @@ export const contactDb = {
                 lastActive: 'Agora mesmo',
                 createdAt: existing.created_at,
                 updatedAt: now,
+                instanceId: existing.instance_id,
             }
         }
 
@@ -349,6 +366,7 @@ export const contactDb = {
                 phone: contact.phone,
                 status: contact.status || ContactStatus.OPT_IN,
                 tags: contact.tags || [],
+                instance_id: contact.instanceId,
                 created_at: now,
             })
 
@@ -415,13 +433,14 @@ export const contactDb = {
             phone: contact.phone,
             status: contact.status || ContactStatus.OPT_IN,
             tags: contact.tags || [],
+            instance_id: contact.instanceId,
             created_at: now,
         }))
 
-        // Use upsert to handle duplicates (phone is unique)
+        // Use upsert to handle duplicates (phone + instance_id should be unique)
         const { error } = await supabase
             .from('contacts')
-            .upsert(rows, { onConflict: 'phone', ignoreDuplicates: true })
+            .upsert(rows, { onConflict: 'phone,instance_id', ignoreDuplicates: true })
 
         if (error) throw error
 
@@ -715,6 +734,7 @@ export const botDb = {
             triggerKeywords: row.trigger_keywords,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
+            instanceId: row.instance_id,
         }))
     },
 
@@ -739,6 +759,7 @@ export const botDb = {
             triggerKeywords: data.trigger_keywords,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
@@ -764,6 +785,7 @@ export const botDb = {
             triggerKeywords: data.trigger_keywords,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            instanceId: data.instance_id,
         }
     },
 
@@ -774,6 +796,7 @@ export const botDb = {
         fallbackMessage?: string
         sessionTimeoutMinutes?: number
         triggerKeywords?: string[]
+        instanceId: string
     }): Promise<Bot> => {
         const id = generateId()
         const now = new Date().toISOString()
@@ -791,6 +814,7 @@ export const botDb = {
                 trigger_keywords: data.triggerKeywords,
                 created_at: now,
                 updated_at: now,
+                instance_id: data.instanceId,
             })
 
         if (error) throw error
@@ -806,6 +830,7 @@ export const botDb = {
             triggerKeywords: data.triggerKeywords,
             createdAt: now,
             updatedAt: now,
+            instanceId: data.instanceId,
         }
     },
 
