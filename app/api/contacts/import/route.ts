@@ -22,14 +22,16 @@ export async function POST(request: Request) {
 
     const { contacts } = validation.data
 
-    // Map to proper format with default status
-    const contactsWithDefaults = contacts.map(c => ({
-      name: c.name || '',
-      phone: c.phone,
-      status: ContactStatus.OPT_IN,
-      tags: c.tags || [],
-      instanceId: c.instanceId,
-    }))
+    // Map to proper format with default status, filtering out contacts without instanceId
+    const contactsWithDefaults = contacts
+      .filter(c => c.instanceId !== undefined)
+      .map(c => ({
+        name: c.name || '',
+        phone: c.phone,
+        status: ContactStatus.OPT_IN,
+        tags: c.tags || [],
+        instanceId: c.instanceId as string, // Safe because we filtered undefined above
+      }))
 
     const imported = await contactDb.import(contactsWithDefaults)
 
