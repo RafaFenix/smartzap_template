@@ -536,7 +536,8 @@ export function DashboardShell({
         healthStatus.services.database?.status !== 'ok'
 
     // Show onboarding overlay ONLY if critical infrastructure (DB) is missing
-    if (needsSetup) {
+    // EXCEPT if we are already on a settings page (to allow instance management)
+    if (needsSetup && !pathname?.startsWith('/settings')) {
         return (
             <OnboardingOverlay
                 health={healthStatus || null}
