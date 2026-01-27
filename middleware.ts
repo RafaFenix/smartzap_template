@@ -19,7 +19,7 @@ export const config = {
 const PUBLIC_PAGES = ['/login', '/setup', '/debug-auth', '/settings']
 const PUBLIC_API_ROUTES = ['/api/auth', '/api/webhook', '/api/health', '/api/system', '/api/setup', '/api/debug', '/api/database', '/api/campaign/workflow', '/api/account/alerts']
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname
 
     // Allow OPTIONS requests for CORS preflight
