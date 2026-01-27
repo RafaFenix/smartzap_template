@@ -21,7 +21,7 @@ const PUBLIC_API_ROUTES = ['/api/auth', '/api/webhook', '/api/health', '/api/sys
 
 export async function proxy(request: NextRequest) {
     const pathname = request.nextUrl.pathname
-    // console.log(`🔍 [PROXY] Requesting: ${pathname}`) // Debug log for Vercel
+    console.log(`🔍 [PROXY] Requesting: ${pathname}`) // Debug log for Vercel
 
     // Allow OPTIONS requests for CORS preflight
     if (request.method === 'OPTIONS') {
@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
     // EARLY EXEMPTIONS - Ensure settings are NEVER redirected
     // ==========================================================================
     if (pathname.startsWith('/settings') || pathname.startsWith('/api/settings')) {
-        // console.log(`✅ [PROXY] Allowing settings path: ${pathname}`)
+        console.log(`✅ [PROXY] Allowing settings path: ${pathname}`)
         return NextResponse.next()
     }
 
