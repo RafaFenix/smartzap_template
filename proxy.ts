@@ -19,11 +19,20 @@ export const config = {
 const PUBLIC_PAGES = ['/login', '/setup', '/debug-auth', '/settings']
 const PUBLIC_API_ROUTES = ['/api/auth', '/api/webhook', '/api/health', '/api/system', '/api/setup', '/api/debug', '/api/database', '/api/campaign/workflow', '/api/account/alerts']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const pathname = request.nextUrl.pathname
+    // console.log(`🔍 [PROXY] Requesting: ${pathname}`) // Debug log for Vercel
 
     // Allow OPTIONS requests for CORS preflight
     if (request.method === 'OPTIONS') {
+        return NextResponse.next()
+    }
+
+    // ==========================================================================
+    // EARLY EXEMPTIONS - Ensure settings are NEVER redirected
+    // ==========================================================================
+    if (pathname.startsWith('/settings') || pathname.startsWith('/api/settings')) {
+        // console.log(`✅ [PROXY] Allowing settings path: ${pathname}`)
         return NextResponse.next()
     }
 
