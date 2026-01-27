@@ -29,10 +29,14 @@ export async function proxy(request: NextRequest) {
     }
 
     // ==========================================================================
-    // EARLY EXEMPTIONS - Ensure settings are NEVER redirected
+    // NUCLEAR EXEMPTION - Ensure settings are NEVER redirected
     // ==========================================================================
-    if (pathname.startsWith('/settings') || pathname.startsWith('/api/settings')) {
-        console.log(`✅ [PROXY] Allowing settings path: ${pathname}`)
+    if (
+        pathname.includes('/settings') ||
+        pathname.includes('/api/settings') ||
+        pathname.includes('/api/auth/status')
+    ) {
+        console.log(`✅ [PROXY] NUCLEAR ALLOW for path: ${pathname}`)
         return NextResponse.next()
     }
 
@@ -133,3 +137,6 @@ export async function proxy(request: NextRequest) {
     // Session cookie exists - allow access (validation happens in layout)
     return NextResponse.next()
 }
+
+// Export as both 'proxy' (Next 16) and 'middleware' (Standard) for maximum compatibility
+export const middleware = proxy
