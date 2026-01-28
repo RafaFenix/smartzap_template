@@ -280,6 +280,17 @@ export default function BootstrapPage() {
         <p className="text-center text-zinc-600 text-xs mt-6">
           🔒 Seu token será salvo de forma segura nas variáveis de ambiente
         </p>
+
+        {/* Escape hatch for advanced users */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => router.push('/settings/instances')}
+            className="text-zinc-500 hover:text-zinc-300 text-sm flex items-center gap-1 mx-auto transition-colors"
+          >
+            Configurar Instâncias Manualmente (Avançado)
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
       </div>
     </div>
   )

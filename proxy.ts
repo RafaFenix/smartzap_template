@@ -32,14 +32,15 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/api/instances') ||
         pathname.startsWith('/api/auth/status') ||
         pathname === '/login' ||
+        pathname === '/login/' ||
         pathname.startsWith('/api/health')
 
     if (isExempted) {
-        console.log(`☢️ [PROXY-EXEMPT] ALLOWING: ${pathname}`)
+        console.log(`☢️ [PROXY-EXEMPT] ALLOWING: ${pathname} | Referer: ${request.headers.get('referer') || 'Direct'}`)
         return NextResponse.next()
     }
 
-    console.log(`🔍 [PROXY-CHECK] Processing: ${pathname}`)
+    console.log(`🔍 [PROXY-CHECK] Processing: ${pathname} | Referer: ${request.headers.get('referer') || 'Direct'}`)
 
     // Allow OPTIONS requests for CORS preflight
     if (request.method === 'OPTIONS') {
