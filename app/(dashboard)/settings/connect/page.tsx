@@ -44,7 +44,7 @@ export default function ConnectInstancePage() {
             toast.success('Número conectado com sucesso!');
             await refreshInstances();
             switchInstance(newInstance.id);
-            router.push('/');
+            router.push('/settings/instances');
         } catch (error) {
             console.error(error);
             toast.error('Erro ao conectar número. Verifique as credenciais.');
