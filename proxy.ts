@@ -34,6 +34,7 @@ export async function proxy(request: NextRequest) {
     if (
         pathname.includes('/settings') ||
         pathname.includes('/api/settings') ||
+        pathname.includes('/api/instances') ||
         pathname.includes('/api/auth/status')
     ) {
         console.log(`✅ [PROXY] NUCLEAR ALLOW for path: ${pathname}`)
