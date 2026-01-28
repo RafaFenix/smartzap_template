@@ -5,7 +5,7 @@
  * Uses same interface for easy migration
  */
 
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 import {
     Campaign,
     Contact,
@@ -2174,6 +2174,10 @@ export const templateProjectDb = {
 
 export const instanceDb = {
     getAll: async (): Promise<Instance[]> => {
+        if (!isSupabaseConfigured()) {
+            console.warn('[instanceDb.getAll] Supabase not configured, returning empty list');
+            return [];
+        }
         const { data, error } = await supabase
             .from('instances')
             .select('*')
@@ -2194,6 +2198,7 @@ export const instanceDb = {
     },
 
     getById: async (id: string): Promise<Instance | undefined> => {
+        if (!isSupabaseConfigured()) return undefined;
         const { data, error } = await supabase
             .from('instances')
             .select('*')
@@ -2215,6 +2220,7 @@ export const instanceDb = {
     },
 
     create: async (instance: Omit<Instance, 'id' | 'createdAt' | 'updatedAt'>): Promise<Instance> => {
+        if (!isSupabaseConfigured()) throw new Error('Database not configured');
         const id = `inst_${Math.random().toString(36).substr(2, 9)}`
         const now = new Date().toISOString()
 
@@ -2244,6 +2250,7 @@ export const instanceDb = {
     },
 
     update: async (id: string, updates: Partial<Instance>): Promise<Instance | undefined> => {
+        if (!isSupabaseConfigured()) throw new Error('Database not configured');
         const updateData: Record<string, unknown> = {}
 
         if (updates.name !== undefined) updateData.name = updates.name
@@ -2265,6 +2272,7 @@ export const instanceDb = {
     },
 
     delete: async (id: string): Promise<void> => {
+        if (!isSupabaseConfigured()) throw new Error('Database not configured');
         const { error } = await supabase
             .from('instances')
             .delete()
