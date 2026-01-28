@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams.toString()
     const fullPath = searchParams ? `${pathname}?${searchParams}` : pathname
 
-    console.log(`🔍 [MIDDLEWARE] Requesting: ${fullPath}`)
+    console.log(`🚀 [MIDDLEWARE-ENTRY] FullPath: ${fullPath} | Method: ${request.method}`)
 
     // Allow OPTIONS requests for CORS preflight
     if (request.method === 'OPTIONS') {
@@ -143,6 +143,8 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl)
     }
 
-    console.log(`✅ [MIDDLEWARE] PAGE ALLOW: Authenticated session for ${pathname}`)
+    console.log(`✅ [MIDDLEWARE-FINAL-ALLOW] PAGE ALLOW: Authenticated session for ${pathname}`)
     return NextResponse.next()
 }
+
+export default middleware;
