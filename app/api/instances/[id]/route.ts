@@ -3,10 +3,11 @@ import { instanceDb } from '@/lib/supabase-db'
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const instance = await instanceDb.getById(params.id)
+        const { id } = await params
+        const instance = await instanceDb.getById(id)
         if (!instance) {
             return NextResponse.json({ error: 'Instance not found' }, { status: 404 })
         }
@@ -19,11 +20,12 @@ export async function GET(
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const body = await request.json()
-        const instance = await instanceDb.update(params.id, body)
+        const instance = await instanceDb.update(id, body)
         if (!instance) {
             return NextResponse.json({ error: 'Instance not found' }, { status: 404 })
         }
@@ -36,10 +38,11 @@ export async function PATCH(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        await instanceDb.delete(params.id)
+        const { id } = await params
+        await instanceDb.delete(id)
         return NextResponse.json({ success: true })
     } catch (error) {
         console.error('Error deleting instance:', error)

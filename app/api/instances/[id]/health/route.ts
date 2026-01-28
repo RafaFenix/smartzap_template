@@ -3,10 +3,11 @@ import { instanceDb } from '@/lib/supabase-db'
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const instance = await instanceDb.getById(params.id)
+        const { id } = await params
+        const instance = await instanceDb.getById(id)
         if (!instance) {
             return NextResponse.json({ error: 'Instance not found' }, { status: 404 })
         }
