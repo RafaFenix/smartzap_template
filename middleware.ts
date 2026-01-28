@@ -19,9 +19,12 @@ export const config = {
 const PUBLIC_PAGES = ['/login', '/setup', '/debug-auth', '/settings']
 const PUBLIC_API_ROUTES = ['/api/auth', '/api/webhook', '/api/health', '/api/system', '/api/setup', '/api/debug', '/api/database', '/api/campaign/workflow', '/api/account/alerts']
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname
-    console.log(`🔍 [PROXY] Requesting: ${pathname}`) // Debug log for Vercel
+    const searchParams = request.nextUrl.searchParams.toString()
+    const fullPath = searchParams ? `${pathname}?${searchParams}` : pathname
+
+    console.log(`🔍 [MIDDLEWARE] Requesting: ${fullPath}`)
 
     // Allow OPTIONS requests for CORS preflight
     if (request.method === 'OPTIONS') {
@@ -32,45 +35,42 @@ export async function proxy(request: NextRequest) {
     // NUCLEAR EXEMPTION - Ensure settings are NEVER redirected
     // ==========================================================================
     if (
-        pathname.includes('/settings') ||
-        pathname.includes('/api/settings') ||
-        pathname.includes('/api/instances') ||
-        pathname.includes('/api/auth/status')
+        pathname.startsWith('/settings') ||
+        pathname.startsWith('/api/settings') ||
+        pathname.startsWith('/api/instances') ||
+        pathname.startsWith('/api/auth/status') ||
+        pathname.includes('/settings') // Catch-all for sub-paths
     ) {
-        console.log(`✅ [PROXY] NUCLEAR ALLOW for path: ${pathname}`)
+        console.log(`✅ [MIDDLEWARE] NUCLEAR ALLOW for path: ${pathname}`)
         return NextResponse.next()
     }
+
+    const hasMasterPassword = !!process.env.MASTER_PASSWORD
+    const isSetupComplete = !!process.env.SETUP_COMPLETE
+
+    console.log(`ℹ️ [MIDDLEWARE] Config Status - hasMasterPass: ${hasMasterPassword}, isSetupComplete: ${isSetupComplete}`)
 
     // ==========================================================================
     // BOOTSTRAP CHECK - Redirect to setup if not configured
     // ==========================================================================
-    const hasMasterPassword = !!process.env.MASTER_PASSWORD
-    const isSetupComplete = !!process.env.SETUP_COMPLETE
 
     // If not configured and not already on setup, redirect immediately
-    // BUT allow /settings routes for instance management
     if (!hasMasterPassword) {
-        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api') && !pathname.startsWith('/settings')) {
+        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api')) {
+            console.log(`🔀 [MIDDLEWARE] REDIRECT: No MasterPassword -> /setup/start`)
             const setupUrl = new URL('/setup/start', request.url)
             return NextResponse.redirect(setupUrl)
         }
     }
 
     // If configured but setup not complete (company info missing), go to wizard
-    // BUT allow /settings routes for instance management
     if (hasMasterPassword && !isSetupComplete) {
-        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api') && !pathname.startsWith('/debug') && !pathname.startsWith('/settings')) {
+        if (!pathname.startsWith('/setup') && !pathname.startsWith('/api') && !pathname.startsWith('/debug')) {
+            console.log(`🔀 [MIDDLEWARE] REDIRECT: Setup incomplete -> /setup/wizard`)
             const wizardUrl = new URL('/setup/wizard?resume=true', request.url)
             return NextResponse.redirect(wizardUrl)
         }
     }
-
-    // If configured and on OLD bootstrap setup, redirect to login or new start?
-    // Actually, if configured, we might want to allow /setup/start if user WANTS to fix envs.
-    // But generally, the legacy logic redirected to login.
-    // Let's REMOVE the forced redirect to login if /setup/bootstrap is visited, 
-    // because we renamed it to /setup/start and we want to allow re-configuration if needed.
-    // However, we should block /setup/bootstrap (old) to avoid 404? No, it's 404 anyway.
 
     // ==========================================================================
     // API Routes - Use API Key authentication
@@ -78,19 +78,23 @@ export async function proxy(request: NextRequest) {
     if (pathname.startsWith('/api/')) {
         // Auth endpoints are always public
         if (PUBLIC_API_ROUTES.some(route => pathname.startsWith(route))) {
+            console.log(`✅ [MIDDLEWARE] API ALLOW: Public route ${pathname}`)
             return NextResponse.next()
         }
 
         // Public endpoints don't require authentication
         if (isPublicEndpoint(pathname)) {
+            console.log(`✅ [MIDDLEWARE] API ALLOW: Public endpoint ${pathname}`)
             return NextResponse.next()
         }
 
         // Admin endpoints require admin-level access
         if (isAdminEndpoint(pathname)) {
+            console.log(`🧪 [MIDDLEWARE] API CHECK: Admin access for ${pathname}`)
             const adminAuth = await verifyAdminAccess(request)
 
             if (!adminAuth.valid) {
+                console.log(`❌ [MIDDLEWARE] API DENY: Admin access invalid for ${pathname}`)
                 return adminAuth.error?.includes('Admin')
                     ? forbiddenResponse(adminAuth.error)
                     : unauthorizedResponse(adminAuth.error)
@@ -102,14 +106,16 @@ export async function proxy(request: NextRequest) {
         // Check for user session cookie (for browser API calls)
         const sessionCookie = request.cookies.get('smartzap_session')
         if (sessionCookie?.value) {
-            // Session exists, allow request (validation happens in API route)
+            console.log(`✅ [MIDDLEWARE] API ALLOW: Session cookie found for ${pathname}`)
             return NextResponse.next()
         }
 
         // All other API endpoints require at least API key
+        console.log(`🧪 [MIDDLEWARE] API CHECK: API Key for ${pathname}`)
         const authResult = await verifyApiKey(request)
 
         if (!authResult.valid) {
+            console.log(`❌ [MIDDLEWARE] API DENY: API Key invalid for ${pathname}`)
             return unauthorizedResponse(authResult.error)
         }
 
@@ -122,6 +128,7 @@ export async function proxy(request: NextRequest) {
 
     // Public pages don't require authentication
     if (PUBLIC_PAGES.some(page => pathname.startsWith(page))) {
+        console.log(`✅ [MIDDLEWARE] PAGE ALLOW: Public page ${pathname}`)
         return NextResponse.next()
     }
 
@@ -130,14 +137,12 @@ export async function proxy(request: NextRequest) {
 
     // No session cookie - redirect to login
     if (!sessionCookie?.value) {
+        console.log(`🔀 [MIDDLEWARE] REDIRECT: No session -> /login (from ${pathname})`)
         const loginUrl = new URL('/login', request.url)
         loginUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(loginUrl)
     }
 
-    // Session cookie exists - allow access (validation happens in layout)
+    console.log(`✅ [MIDDLEWARE] PAGE ALLOW: Authenticated session for ${pathname}`)
     return NextResponse.next()
 }
-
-// Export as both 'proxy' (Next 16) and 'middleware' (Standard) for maximum compatibility
-export const middleware = proxy
