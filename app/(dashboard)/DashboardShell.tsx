@@ -535,9 +535,14 @@ export function DashboardShell({
     const needsSetup = !healthStatus ||
         healthStatus.services.database?.status !== 'ok'
 
+    console.log('🔍 [DashboardShell] pathname:', pathname);
+    console.log('🔍 [DashboardShell] needsSetup:', needsSetup);
+    console.log('🔍 [DashboardShell] database status:', healthStatus?.services.database?.status);
+
     // Show onboarding overlay ONLY if critical infrastructure (DB) is missing
     // EXCEPT if we are already on a settings page (to allow instance management)
     if (needsSetup && !pathname?.startsWith('/settings')) {
+        console.log('🚀 [DashboardShell] Showing OnboardingOverlay');
         return (
             <OnboardingOverlay
                 health={healthStatus || null}
