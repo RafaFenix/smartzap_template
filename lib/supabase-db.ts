@@ -38,6 +38,7 @@ import {
     TemplateProject,
     TemplateProjectItem,
     CreateTemplateProjectDTO,
+    Instance,
 } from '../types'
 
 // Generate a simple ID (same as turso-db.ts for compatibility)
@@ -2166,3 +2167,109 @@ export const templateProjectDb = {
     }
 };
 
+
+// ============================================================================
+// INSTANCES
+// ============================================================================
+
+export const instanceDb = {
+    getAll: async (): Promise<Instance[]> => {
+        const { data, error } = await supabase
+            .from('instances')
+            .select('*')
+            .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        return (data || []).map(row => ({
+            id: row.id,
+            name: row.name,
+            phoneNumberId: row.phone_number_id,
+            businessAccountId: row.business_account_id,
+            accessToken: row.access_token,
+            status: row.status as Instance['status'],
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+        }))
+    },
+
+    getById: async (id: string): Promise<Instance | undefined> => {
+        const { data, error } = await supabase
+            .from('instances')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (error || !data) return undefined
+
+        return {
+            id: data.id,
+            name: data.name,
+            phoneNumberId: data.phone_number_id,
+            businessAccountId: data.business_account_id,
+            accessToken: data.access_token,
+            status: data.status as Instance['status'],
+            createdAt: data.created_at,
+            updatedAt: data.updated_at,
+        }
+    },
+
+    create: async (instance: Omit<Instance, 'id' | 'createdAt' | 'updatedAt'>): Promise<Instance> => {
+        const id = `inst_${Math.random().toString(36).substr(2, 9)}`
+        const now = new Date().toISOString()
+
+        const { data, error } = await supabase
+            .from('instances')
+            .insert({
+                id,
+                name: instance.name,
+                phone_number_id: instance.phoneNumberId,
+                business_account_id: instance.businessAccountId,
+                access_token: instance.accessToken,
+                status: instance.status || 'active',
+                created_at: now,
+                updated_at: now,
+            })
+            .select()
+            .single()
+
+        if (error) throw error
+
+        return {
+            ...instance,
+            id,
+            createdAt: now,
+            updatedAt: now,
+        }
+    },
+
+    update: async (id: string, updates: Partial<Instance>): Promise<Instance | undefined> => {
+        const updateData: Record<string, unknown> = {}
+
+        if (updates.name !== undefined) updateData.name = updates.name
+        if (updates.phoneNumberId !== undefined) updateData.phone_number_id = updates.phoneNumberId
+        if (updates.businessAccountId !== undefined) updateData.business_account_id = updates.businessAccountId
+        if (updates.accessToken !== undefined) updateData.access_token = updates.accessToken
+        if (updates.status !== undefined) updateData.status = updates.status
+
+        updateData.updated_at = new Date().toISOString()
+
+        const { error } = await supabase
+            .from('instances')
+            .update(updateData)
+            .eq('id', id)
+
+        if (error) throw error
+
+        return instanceDb.getById(id)
+    },
+
+    delete: async (id: string): Promise<void> => {
+        const { error } = await supabase
+            .from('instances')
+            .delete()
+            .eq('id', id)
+
+        if (error) throw error
+    }
+}
