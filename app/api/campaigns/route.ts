@@ -10,9 +10,11 @@ export const revalidate = 0
  * GET /api/campaigns
  * List all campaigns from Supabase (NO CACHE - always fresh)
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const campaigns = await campaignDb.getAll()
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId') || undefined
+    const campaigns = await campaignDb.getAll(instanceId)
     return NextResponse.json(campaigns, {
       headers: {
         // Disable ALL caching

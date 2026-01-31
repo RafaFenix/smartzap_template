@@ -81,9 +81,10 @@ export interface GenerateUtilityResponse {
 }
 
 export const templateService = {
-  getAll: async (): Promise<Template[]> => {
+  getAll: async (instanceId?: string): Promise<Template[]> => {
     // Call API directly - server will get credentials from Redis
-    const response = await fetch('/api/templates', {
+    const url = instanceId ? `/api/templates?instanceId=${instanceId}` : '/api/templates';
+    const response = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -96,7 +97,8 @@ export const templateService = {
       );
     }
 
-    return response.json();
+    const data = await response.json();
+    return data.templates || data;
   },
 
   sync: async (): Promise<number> => {

@@ -3,12 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { campaignService } from '../services';
 import { Campaign, CampaignStatus } from '../types';
 import { useRealtimeQuery } from './useRealtimeQuery';
+import { useInstance } from '../components/providers/InstanceProvider';
 
 // --- Data Hook (React Query + Realtime) ---
 export const useCampaignsQuery = (initialData?: Campaign[]) => {
+  const { currentInstance } = useInstance();
+  const instanceId = currentInstance?.id;
+
   return useRealtimeQuery({
-    queryKey: ['campaigns'],
-    queryFn: campaignService.getAll,
+    queryKey: ['campaigns', instanceId],
+    queryFn: () => campaignService.getAll(instanceId),
     initialData: initialData,
     staleTime: 15 * 1000,  // 15 segundos
     // Realtime configuration

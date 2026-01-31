@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { templateService, UtilityCategory, GeneratedTemplate, GenerateUtilityParams } from '../services/templateService';
 import { Template } from '../types';
+import { useInstance } from '../components/providers/InstanceProvider';
 
 // Informações das categorias de utility para o UI
 export const UTILITY_CATEGORIES: Record<UtilityCategory, { name: string; icon: string }> = {
@@ -25,6 +26,9 @@ export const UTILITY_CATEGORIES: Record<UtilityCategory, { name: string; icon: s
 
 export const useTemplatesController = () => {
   const queryClient = useQueryClient();
+  const { currentInstance } = useInstance();
+  const instanceId = currentInstance?.id;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
@@ -67,12 +71,12 @@ export const useTemplatesController = () => {
   const [universalPhone, setUniversalPhone] = useState<string>('');
 
   // --- Queries ---
-  // Templates raramente mudam - cache infinito, sincroniza só no botão
   const templatesQuery = useQuery({
-    queryKey: ['templates'],
-    queryFn: templateService.getAll,
-    staleTime: Infinity,  // Nunca considera "velho" automaticamente
-    gcTime: Infinity,     // Nunca remove do cache
+    queryKey: ['templates', instanceId],
+    queryFn: () => templateService.getAll(instanceId),
+    enabled: !!instanceId,
+    staleTime: Infinity,
+    gcTime: Infinity,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -80,9 +84,9 @@ export const useTemplatesController = () => {
 
   // --- Mutations ---
   const syncMutation = useMutation({
-    mutationFn: templateService.sync,
+    mutationFn: () => templateService.sync(),
     onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['templates', instanceId] });
       toast.success(`${count} novo(s) template(s) sincronizado(s) do Meta Business Manager!`);
     }
   });
@@ -97,7 +101,7 @@ export const useTemplatesController = () => {
   const addTemplateMutation = useMutation({
     mutationFn: templateService.add,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['templates', instanceId] });
       setIsAiModalOpen(false);
       setAiPrompt('');
       setAiResult('');
@@ -105,7 +109,6 @@ export const useTemplatesController = () => {
     }
   });
 
-  // Bulk Utility Generation Mutation
   const generateBulkMutation = useMutation({
     mutationFn: (params: GenerateUtilityParams) => templateService.generateUtilityTemplates(params),
     onSuccess: (result) => {
@@ -119,11 +122,10 @@ export const useTemplatesController = () => {
     }
   });
 
-  // Delete Template Mutation
   const deleteMutation = useMutation({
     mutationFn: (name: string) => templateService.delete(name),
     onSuccess: (_, name) => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['templates', instanceId] });
       toast.success(`Template "${name}" deletado com sucesso!`);
       setIsDeleteModalOpen(false);
       setTemplateToDelete(null);
@@ -133,11 +135,10 @@ export const useTemplatesController = () => {
     }
   });
 
-  // Bulk Delete Mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: (names: string[]) => templateService.deleteBulk(names),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['templates', instanceId] });
       if (result.deleted > 0) {
         toast.success(`${result.deleted} template(s) deletado(s) com sucesso!`);
       }
@@ -177,13 +178,12 @@ export const useTemplatesController = () => {
 
     addTemplateMutation.mutate({
       name: newTemplateName,
-      category: 'MARKETING', // Default for AI
+      category: 'MARKETING',
       language: 'pt_BR',
       content: aiResult
     });
   };
 
-  // Bulk Utility Handlers - SIMPLIFICADO
   const handleGenerateBulk = () => {
     if (!bulkBusinessType.trim() || bulkBusinessType.length < 10) {
       toast.error('Descreva melhor o que você precisa (mínimo 10 caracteres)');
@@ -230,7 +230,6 @@ export const useTemplatesController = () => {
     toast.success('Template copiado!');
   };
 
-  // Estado para criação na Meta
   const [isCreatingInMeta, setIsCreatingInMeta] = useState(false);
 
   const handleExportSelected = async () => {
@@ -242,27 +241,22 @@ export const useTemplatesController = () => {
     }
 
     setIsCreatingInMeta(true);
-
     try {
       const templatesToCreate = selected.map(t => ({
         name: t.name,
         content: t.content,
         language: t.language,
         category: 'UTILITY' as const,
-        // Incluir variáveis de exemplo se existirem
         ...(t.variables && t.variables.length > 0 && { exampleVariables: t.variables.map((v, i) => `Exemplo ${i + 1}`) }),
-        // Incluir header, footer e buttons se existirem
         ...(t.header && { header: t.header }),
         ...(t.footer && { footer: t.footer }),
         ...(t.buttons && t.buttons.length > 0 && { buttons: t.buttons }),
       }));
 
       const result = await templateService.createBulkInMeta(templatesToCreate);
-
       if (result.created > 0) {
         toast.success(`${result.created} template(s) criado(s) na Meta!`);
-        // Invalida cache para recarregar lista
-        queryClient.invalidateQueries({ queryKey: ['templates'] });
+        queryClient.invalidateQueries({ queryKey: ['templates', instanceId] });
       }
 
       if (result.failed > 0) {
@@ -271,11 +265,9 @@ export const useTemplatesController = () => {
         });
       }
 
-      // Fecha modal se todos criados com sucesso
       if (result.failed === 0) {
         handleCloseBulkModal();
       }
-
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao criar templates');
     } finally {
@@ -292,7 +284,6 @@ export const useTemplatesController = () => {
     setSelectedTemplates(new Set());
   };
 
-  // --- Details Modal Handlers ---
   const handleViewDetails = async (template: Template) => {
     setSelectedTemplate(template);
     setIsDetailsModalOpen(true);
@@ -310,7 +301,6 @@ export const useTemplatesController = () => {
       });
     } catch (error) {
       console.error('Error loading details:', error);
-      // Ainda mostra o modal com os dados básicos
     } finally {
       setIsLoadingDetails(false);
     }
@@ -322,7 +312,6 @@ export const useTemplatesController = () => {
     setTemplateDetails(null);
   };
 
-  // --- Delete Handlers ---
   const handleDeleteClick = (template: Template) => {
     setTemplateToDelete(template);
     setIsDeleteModalOpen(true);
@@ -339,7 +328,6 @@ export const useTemplatesController = () => {
     setTemplateToDelete(null);
   };
 
-  // --- Multi-select Handlers for Meta Templates ---
   const handleToggleMetaTemplate = (templateName: string) => {
     setSelectedMetaTemplates(prev => {
       const next = new Set(prev);
@@ -383,7 +371,7 @@ export const useTemplatesController = () => {
 
   return {
     templates: filteredTemplates,
-    isLoading: templatesQuery.isLoading,
+    isLoading: (templatesQuery.isLoading && !templatesQuery.data) || !instanceId,
     isSyncing: syncMutation.isPending,
     searchTerm,
     setSearchTerm,

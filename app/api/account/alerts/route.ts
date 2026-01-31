@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 
 export interface AccountAlert {
   id: string
+  instanceId?: string | null
   type: string
   code: number | null
   message: string
@@ -16,12 +17,21 @@ export interface AccountAlert {
  * Get active (non-dismissed) account alerts
  * OPTIMIZED: Uses Supabase with caching
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId')
+
+    let query = supabase
       .from('account_alerts')
       .select('*')
       .eq('dismissed', false)
+
+    if (instanceId) {
+      query = query.eq('instance_id', instanceId)
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(10)
 
@@ -34,6 +44,7 @@ export async function GET() {
 
     const alerts: AccountAlert[] = (data || []).map(row => ({
       id: row.id,
+      instanceId: row.instance_id,
       type: row.type,
       code: row.code,
       message: row.message,
@@ -59,7 +70,8 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const { type, code, message, details } = await request.json()
+    const body = await request.json()
+    const { type, code, message, details, instanceId } = body
 
     if (!type || !message) {
       return NextResponse.json(
@@ -80,6 +92,7 @@ export async function POST(request: Request) {
         message,
         details: details ? JSON.stringify(details) : null,
         dismissed: false,
+        instance_id: instanceId || null,
         created_at: now
       })
 
@@ -104,15 +117,22 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url)
     const alertId = searchParams.get('id')
     const dismissAll = searchParams.get('all') === 'true'
+    const instanceId = searchParams.get('instanceId')
 
     if (dismissAll) {
-      const { error } = await supabase
+      let query = supabase
         .from('account_alerts')
         .update({ dismissed: true })
         .neq('dismissed', true)
 
+      if (instanceId) {
+        query = query.eq('instance_id', instanceId)
+      }
+
+      const { error } = await query
+
       if (error) throw error
-      return NextResponse.json({ success: true, message: 'Todos alertas dispensados' })
+      return NextResponse.json({ success: true, message: 'Alertas dispensados' })
     }
 
     if (!alertId) {

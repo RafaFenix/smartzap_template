@@ -21,7 +21,7 @@ interface MetaTemplate {
 async function fetchTemplatesFromMeta(businessAccountId: string, accessToken: string) {
   const allTemplates: MetaTemplate[] = []
   let nextUrl: string | null = `https://graph.facebook.com/v24.0/${businessAccountId}/message_templates?fields=name,status,language,category,components,last_updated_time&limit=100`
-  
+
   // Paginate through all results
   while (nextUrl) {
     const res: Response = await fetch(nextUrl, {
@@ -35,7 +35,7 @@ async function fetchTemplatesFromMeta(businessAccountId: string, accessToken: st
 
     const data = await res.json()
     allTemplates.push(...(data.data || []))
-    
+
     // Check for next page
     nextUrl = data.paging?.next || null
   }
@@ -57,23 +57,25 @@ async function fetchTemplatesFromMeta(businessAccountId: string, accessToken: st
   })
 }
 
-// GET /api/templates - Fetch templates using Redis credentials
-export async function GET() {
+// GET /api/templates - Fetch templates using Redis or Instance credentials
+export async function GET(request: NextRequest) {
   try {
-    const credentials = await getWhatsAppCredentials()
-    
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId')
+    const credentials = await getWhatsAppCredentials(instanceId || undefined)
+
     if (!credentials?.businessAccountId || !credentials?.accessToken) {
       return NextResponse.json(
-        { error: 'Credenciais não configuradas. Configure em Configurações.' }, 
+        { error: 'Credenciais não configuradas. Configure em Configurações.' },
         { status: 401 }
       )
     }
 
     const templates = await fetchTemplatesFromMeta(
-      credentials.businessAccountId, 
+      credentials.businessAccountId,
       credentials.accessToken
     )
-    
+
     return NextResponse.json(templates, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
@@ -82,14 +84,17 @@ export async function GET() {
   } catch (error) {
     console.error('Meta API Error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal Server Error' }, 
+      { error: error instanceof Error ? error.message : 'Internal Server Error' },
       { status: 500 }
     )
   }
 }
 
-// POST /api/templates - Fetch templates (with optional body credentials, fallback to Redis)
+// POST /api/templates - Fetch templates (with optional body credentials, fallback to Redis/Instance)
 export async function POST(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const queryInstanceId = searchParams.get('instanceId')
+
   let businessAccountId: string | undefined
   let accessToken: string | undefined
 
@@ -102,12 +107,12 @@ export async function POST(request: NextRequest) {
       accessToken = body.accessToken
     }
   } catch {
-    // Empty body, will use Redis
+    // Empty body, will use credentials from store
   }
 
-  // Fallback to Redis credentials
+  // Fallback to credentials from store (Redis or Instance)
   if (!businessAccountId || !accessToken) {
-    const credentials = await getWhatsAppCredentials()
+    const credentials = await getWhatsAppCredentials(queryInstanceId || undefined)
     if (credentials) {
       businessAccountId = credentials.businessAccountId
       accessToken = credentials.accessToken
@@ -116,7 +121,7 @@ export async function POST(request: NextRequest) {
 
   if (!businessAccountId || !accessToken) {
     return NextResponse.json(
-      { error: 'Credenciais não configuradas. Configure em Configurações.' }, 
+      { error: 'Credenciais não configuradas. Configure em Configurações.' },
       { status: 401 }
     )
   }
@@ -127,7 +132,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Meta API Error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal Server Error' }, 
+      { error: error instanceof Error ? error.message : 'Internal Server Error' },
       { status: 500 }
     )
   }

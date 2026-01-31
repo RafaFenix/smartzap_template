@@ -5,9 +5,11 @@ import { contactDb } from '@/lib/supabase-db'
  * GET /api/contacts/stats
  * Get contact statistics
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const stats = await contactDb.getStats()
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId') || undefined
+    const stats = await contactDb.getStats(instanceId)
     return NextResponse.json(stats, {
       headers: {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60'

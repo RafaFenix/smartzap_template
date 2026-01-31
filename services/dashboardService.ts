@@ -30,29 +30,32 @@ export const dashboardService = {
    * A API faz uma única query SQL agregada no servidor.
    * Cache: 15s no edge, stale-while-revalidate: 30s
    */
-  getStats: async (): Promise<DashboardStats> => {
+  getStats: async (instanceId?: string): Promise<DashboardStats> => {
+    const statsUrl = instanceId ? `/api/dashboard/stats?instanceId=${instanceId}` : '/api/dashboard/stats';
+    const campaignsUrl = instanceId ? `/api/campaigns?instanceId=${instanceId}` : '/api/campaigns';
+
     // Fazer ambas chamadas em PARALELO
     const [statsResponse, campaignsResponse] = await Promise.all([
-      fetch('/api/dashboard/stats'),
-      fetch('/api/campaigns')
+      fetch(statsUrl),
+      fetch(campaignsUrl)
     ]);
-    
+
     // Parse das respostas
-    const stats: StatsAPIResponse = statsResponse.ok 
-      ? await statsResponse.json() 
+    const stats: StatsAPIResponse = statsResponse.ok
+      ? await statsResponse.json()
       : { totalSent: 0, totalDelivered: 0, totalRead: 0, totalFailed: 0, activeCampaigns: 0, deliveryRate: 0 };
-    
-    const campaigns: Campaign[] = campaignsResponse.ok 
-      ? await campaignsResponse.json() 
+
+    const campaigns: Campaign[] = campaignsResponse.ok
+      ? (await campaignsResponse.json()).campaigns || await campaignsResponse.json()
       : [];
-    
+
     // Chart data das campanhas recentes
-    const chartData = campaigns.slice(0, 7).map(c => ({
+    const chartData = (Array.isArray(campaigns) ? campaigns : []).slice(0, 7).map(c => ({
       name: c.name?.substring(0, 3) || '?',
       sent: c.recipients || 0,
       read: c.read || 0
     })).reverse();
-    
+
     return {
       sent24h: stats.totalSent.toLocaleString(),
       deliveryRate: `${stats.deliveryRate}%`,
@@ -66,12 +69,14 @@ export const dashboardService = {
    * Buscar campanhas recentes (top 5).
    * Usa o cache do /api/campaigns (10s edge cache)
    */
-  getRecentCampaigns: async (): Promise<Campaign[]> => {
+  getRecentCampaigns: async (instanceId?: string): Promise<Campaign[]> => {
     try {
-      const response = await fetch('/api/campaigns');
+      const url = instanceId ? `/api/campaigns?instanceId=${instanceId}` : '/api/campaigns';
+      const response = await fetch(url);
       if (!response.ok) return [];
-      const campaigns: Campaign[] = await response.json();
-      return campaigns.slice(0, 5);
+      const data = await response.json();
+      const campaigns: Campaign[] = data.campaigns || data;
+      return Array.isArray(campaigns) ? campaigns.slice(0, 5) : [];
     } catch {
       return [];
     }

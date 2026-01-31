@@ -46,14 +46,16 @@ interface CampaignStatusResponse {
 }
 
 export const campaignService = {
-  getAll: async (): Promise<Campaign[]> => {
+  getAll: async (instanceId?: string): Promise<Campaign[]> => {
     // Fetch from real API
-    const response = await fetch('/api/campaigns');
+    const url = instanceId ? `/api/campaigns?instanceId=${instanceId}` : '/api/campaigns';
+    const response = await fetch(url);
     if (!response.ok) {
       console.error('Failed to fetch campaigns:', response.statusText);
       return [];
     }
-    return response.json();
+    const data = await response.json();
+    return data.campaigns || data;
   },
 
   getById: async (id: string): Promise<Campaign | undefined> => {

@@ -32,6 +32,7 @@ export type TemplateStatus = 'APPROVED' | 'PENDING' | 'REJECTED';
 
 export interface Template {
   id: string;
+  instanceId?: string;
   name: string;
   category: TemplateCategory;
   language: string;

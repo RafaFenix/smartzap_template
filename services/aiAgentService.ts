@@ -15,13 +15,14 @@ const BASE_URL = '/api/ai-agents'
 /**
  * Lista todos os agentes de IA
  */
-export async function getAgents(): Promise<AIAgent[]> {
-  const response = await fetch(BASE_URL)
-  
+export async function getAgents(instanceId?: string): Promise<AIAgent[]> {
+  const url = instanceId ? `${BASE_URL}?instanceId=${instanceId}` : BASE_URL
+  const response = await fetch(url)
+
   if (!response.ok) {
     throw new Error('Erro ao buscar agentes')
   }
-  
+
   const data = await response.json()
   return data.agents
 }
@@ -31,11 +32,11 @@ export async function getAgents(): Promise<AIAgent[]> {
  */
 export async function getAgent(id: string): Promise<AIAgent> {
   const response = await fetch(`${BASE_URL}/${id}`)
-  
+
   if (!response.ok) {
     throw new Error('Agente não encontrado')
   }
-  
+
   const data = await response.json()
   return data.agent
 }
@@ -55,12 +56,12 @@ export async function createAgent(data: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Erro ao criar agente')
   }
-  
+
   const result = await response.json()
   return result.agent
 }
@@ -77,12 +78,12 @@ export async function updateAgent(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Erro ao atualizar agente')
   }
-  
+
   const result = await response.json()
   return result.agent
 }
@@ -94,7 +95,7 @@ export async function deleteAgent(id: string): Promise<void> {
   const response = await fetch(`${BASE_URL}/${id}`, {
     method: 'DELETE',
   })
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Erro ao remover agente')
@@ -110,11 +111,11 @@ export async function deleteAgent(id: string): Promise<void> {
  */
 export async function getTools(agentId: string): Promise<AITool[]> {
   const response = await fetch(`${BASE_URL}/${agentId}/tools`)
-  
+
   if (!response.ok) {
     throw new Error('Erro ao buscar ferramentas')
   }
-  
+
   const data = await response.json()
   return data.tools
 }
@@ -137,12 +138,12 @@ export async function createTool(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Erro ao criar ferramenta')
   }
-  
+
   const result = await response.json()
   return result.tool
 }
@@ -154,7 +155,7 @@ export async function deleteTool(agentId: string, toolId: string): Promise<void>
   const response = await fetch(`${BASE_URL}/${agentId}/tools/${toolId}`, {
     method: 'DELETE',
   })
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Erro ao remover ferramenta')
@@ -173,6 +174,6 @@ export async function getAgentWithTools(id: string): Promise<AIAgent & { tools: 
     getAgent(id),
     getTools(id),
   ])
-  
+
   return { ...agent, tools }
 }

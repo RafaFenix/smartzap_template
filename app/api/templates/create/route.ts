@@ -7,7 +7,8 @@ import { MetaAPIError } from '@/lib/whatsapp/errors'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log('[API CREATE TEMPLATE] Incoming Payload Category:', body.category);
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId')
 
     // 1. Validate Body do Payload (Single vs Bulk)
     let templatesData: z.infer<typeof CreateTemplateSchema>[] = []
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
         const parsed = CreateTemplateSchema.parse(temp)
 
         // Chama Serviço ("A Fábrica")
-        const result = await templateService.create(parsed)
+        const result = await templateService.create(parsed, instanceId || undefined)
         results.push(result)
 
       } catch (err: any) {

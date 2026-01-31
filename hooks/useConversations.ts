@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { useState, useCallback, useMemo } from 'react'
 import { conversationService, type ConversationListParams } from '@/services/conversationService'
 import type { BotConversation, BotMessage } from '@/types'
+import { useInstance } from '@/components/providers/InstanceProvider'
 
 // =============================================================================
 // Query Keys
@@ -31,16 +32,20 @@ export const conversationKeys = {
 
 const DEFAULT_LIMIT = 20
 
-export function useConversations(initialFilters: Omit<ConversationListParams, 'offset' | 'limit'> = {}) {
+export function useConversations(initialFilters: Omit<ConversationListParams, 'offset' | 'limit' | 'instanceId'> = {}) {
+  const { currentInstance } = useInstance()
+  const instanceId = currentInstance?.id
   const [filters, setFilters] = useState(initialFilters)
 
   const query = useInfiniteQuery({
-    queryKey: conversationKeys.list(filters),
+    queryKey: conversationKeys.list({ ...filters, instanceId }),
     queryFn: ({ pageParam = 0 }) => conversationService.getConversations({
       ...filters,
+      instanceId,
       limit: DEFAULT_LIMIT,
       offset: pageParam,
     }),
+    enabled: !!instanceId,
     getNextPageParam: (lastPage) => {
       if (!lastPage.hasMore) return undefined
       return lastPage.offset + lastPage.limit
@@ -201,6 +206,7 @@ export function useConversationVariables(conversationId: string | null) {
 // =============================================================================
 
 export function useConversationsController() {
+  const { currentInstance } = useInstance()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'active' | 'paused' | 'ended' | undefined>(undefined)
 

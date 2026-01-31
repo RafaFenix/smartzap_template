@@ -49,11 +49,17 @@ const generateId = () => Math.random().toString(36).substr(2, 9)
 // ============================================================================
 
 export const campaignDb = {
-    getAll: async (): Promise<Campaign[]> => {
-        const { data, error } = await supabase
+    getAll: async (instanceId?: string): Promise<Campaign[]> => {
+        let query = supabase
             .from('campaigns')
             .select('*')
             .order('created_at', { ascending: false })
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -448,11 +454,17 @@ export const contactDb = {
         return rows.length
     },
 
-    getTags: async (): Promise<string[]> => {
-        const { data, error } = await supabase
+    getTags: async (instanceId?: string): Promise<string[]> => {
+        let query = supabase
             .from('contacts')
             .select('tags')
             .not('tags', 'is', null)
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -466,10 +478,16 @@ export const contactDb = {
         return Array.from(tagSet).sort()
     },
 
-    getStats: async () => {
-        const { data, error } = await supabase
+    getStats: async (instanceId?: string) => {
+        let query = supabase
             .from('contacts')
             .select('status')
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -559,11 +577,17 @@ export const campaignContactDb = {
 // ============================================================================
 
 export const templateDb = {
-    getAll: async (): Promise<Template[]> => {
-        const { data, error } = await supabase
+    getAll: async (instanceId?: string): Promise<Template[]> => {
+        let query = supabase
             .from('templates')
             .select('*')
             .order('created_at', { ascending: false })
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -593,9 +617,10 @@ export const templateDb = {
                 components: typeof template.content === 'string'
                     ? JSON.parse(template.content)
                     : template.content,
+                instance_id: template.instanceId,
                 created_at: now,
                 updated_at: now,
-            }, { onConflict: 'name' })
+            }, { onConflict: 'name,instance_id' })
 
         if (error) throw error
     },
@@ -664,11 +689,17 @@ export const settingsDb = {
 // ============================================================================
 
 export const dashboardDb = {
-    getStats: async () => {
+    getStats: async (instanceId?: string) => {
         // Get campaign stats with aggregation
-        const { data, error } = await supabase
+        let query = supabase
             .from('campaigns')
             .select('sent, delivered, read, failed, status, name, total_recipients')
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -715,11 +746,17 @@ export const dashboardDb = {
 // ============================================================================
 
 export const botDb = {
-    getAll: async (): Promise<Bot[]> => {
-        const { data, error } = await supabase
+    getAll: async (instanceId?: string): Promise<Bot[]> => {
+        let query = supabase
             .from('bots')
             .select('*')
             .order('created_at', { ascending: false })
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -1168,8 +1205,8 @@ export const botConversationDb = {
         }
     },
 
-    getByContact: async (botId: string, contactPhone: string): Promise<BotConversation | null> => {
-        const { data, error } = await supabase
+    getByContact: async (botId: string, contactPhone: string, instanceId?: string): Promise<BotConversation | null> => {
+        let query = supabase
             .from('bot_conversations')
             .select(`
         *,
@@ -1180,7 +1217,12 @@ export const botConversationDb = {
             .neq('status', 'ended')
             .order('created_at', { ascending: false })
             .limit(1)
-            .single()
+
+        if (instanceId) {
+            query = query.eq('instance_id', instanceId)
+        }
+
+        const { data, error } = await query.single()
 
         if (error || !data) return null
 

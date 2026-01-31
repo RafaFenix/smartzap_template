@@ -43,16 +43,18 @@ export const useContactsController = () => {
   });
 
   const statsQuery = useQuery({
-    queryKey: ['contactStats'],
-    queryFn: contactService.getStats,
+    queryKey: ['contactStats', currentInstance?.id],
+    queryFn: () => contactService.getStats(currentInstance?.id),
     staleTime: 60 * 1000,  // 60 segundos
+    enabled: !!currentInstance?.id,
     initialData: { total: 0, optIn: 0, optOut: 0 }
   });
 
   const tagsQuery = useQuery({
-    queryKey: ['contactTags'],
-    queryFn: contactService.getTags,
+    queryKey: ['contactTags', currentInstance?.id],
+    queryFn: () => contactService.getTags(currentInstance?.id),
     staleTime: 60 * 1000,  // 60 segundos
+    enabled: !!currentInstance?.id,
     initialData: []
   });
 

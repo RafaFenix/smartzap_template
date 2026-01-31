@@ -46,17 +46,18 @@ export const contactService = {
     return response.json();
   },
 
-  getStats: async (): Promise<ContactStats> => {
-    const response = await fetch('/api/contacts/stats');
+  getStats: async (instanceId?: string): Promise<ContactStats> => {
+    const url = instanceId ? `/api/contacts/stats?instanceId=${instanceId}` : '/api/contacts/stats';
+    const response = await fetch(url);
     if (!response.ok) {
       return { total: 0, optIn: 0, optOut: 0 };
     }
     return response.json();
   },
 
-  getTags: async (): Promise<string[]> => {
+  getTags: async (instanceId?: string): Promise<string[]> => {
     // Tags can be extracted from contacts
-    const contacts = await contactService.getAll();
+    const contacts = await contactService.getAll(instanceId);
     const allTags = contacts.flatMap(c => c.tags || []);
     return [...new Set(allTags)];
   },

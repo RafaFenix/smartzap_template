@@ -27,6 +27,7 @@ export interface ConversationDetailResponse {
 }
 
 export interface ConversationListParams {
+  instanceId?: string
   status?: 'active' | 'paused' | 'ended'
   botId?: string
   limit?: number
@@ -46,6 +47,7 @@ export const conversationService = {
   ): Promise<ConversationListResponse> => {
     const searchParams = new URLSearchParams()
 
+    if (params.instanceId) searchParams.set('instanceId', params.instanceId)
     if (params.status) searchParams.set('status', params.status)
     if (params.botId) searchParams.set('botId', params.botId)
     if (params.limit) searchParams.set('limit', params.limit.toString())

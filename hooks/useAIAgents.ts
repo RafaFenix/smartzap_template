@@ -9,6 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as aiAgentService from '@/services/aiAgentService'
 import type { AIAgent, AITool } from '@/types'
+import { useInstance } from '@/components/providers/InstanceProvider'
 
 // =============================================================================
 // QUERY KEYS
@@ -16,7 +17,7 @@ import type { AIAgent, AITool } from '@/types'
 
 export const aiAgentKeys = {
   all: ['ai-agents'] as const,
-  list: () => [...aiAgentKeys.all, 'list'] as const,
+  list: (instanceId?: string) => [...aiAgentKeys.all, 'list', instanceId || 'global'] as const,
   detail: (id: string) => [...aiAgentKeys.all, 'detail', id] as const,
   tools: (agentId: string) => [...aiAgentKeys.all, 'tools', agentId] as const,
 }
@@ -28,11 +29,12 @@ export const aiAgentKeys = {
 /**
  * Hook para listar todos os agentes
  */
-export function useAgents() {
+export function useAgents(instanceId?: string) {
   return useQuery({
-    queryKey: aiAgentKeys.list(),
-    queryFn: aiAgentService.getAgents,
+    queryKey: aiAgentKeys.list(instanceId),
+    queryFn: () => aiAgentService.getAgents(instanceId),
     staleTime: 30000, // 30 segundos
+    enabled: !!instanceId,
   })
 }
 
@@ -69,7 +71,7 @@ export function useAgentWithTools(id: string | undefined) {
  */
 export function useCreateAgent() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: (data: Parameters<typeof aiAgentService.createAgent>[0]) =>
       aiAgentService.createAgent(data),
@@ -84,7 +86,7 @@ export function useCreateAgent() {
  */
 export function useUpdateAgent() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Parameters<typeof aiAgentService.updateAgent>[1]) =>
       aiAgentService.updateAgent(id, data),
@@ -100,7 +102,7 @@ export function useUpdateAgent() {
  */
 export function useDeleteAgent() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: aiAgentService.deleteAgent,
     onSuccess: () => {
@@ -130,7 +132,7 @@ export function useAgentTools(agentId: string | undefined) {
  */
 export function useCreateTool() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: ({ agentId, ...data }: { agentId: string } & Parameters<typeof aiAgentService.createTool>[1]) =>
       aiAgentService.createTool(agentId, data),
@@ -146,7 +148,7 @@ export function useCreateTool() {
  */
 export function useDeleteTool() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: ({ agentId, toolId }: { agentId: string; toolId: string }) =>
       aiAgentService.deleteTool(agentId, toolId),
@@ -165,22 +167,23 @@ export function useDeleteTool() {
  * Hook controlador para gerenciamento completo de agentes
  */
 export function useAIAgentsController() {
-  const { data: agents = [], isLoading, error, refetch } = useAgents()
+  const { currentInstance } = useInstance()
+  const { data: agents = [], isLoading, error, refetch } = useAgents(currentInstance?.id)
   const createAgent = useCreateAgent()
   const updateAgent = useUpdateAgent()
   const deleteAgent = useDeleteAgent()
   const createTool = useCreateTool()
   const deleteTool = useDeleteTool()
-  
+
   return {
     // Data
     agents,
     isLoading,
     error,
-    
+
     // Actions
     refetch,
-    
+
     // Agent mutations
     createAgent: createAgent.mutateAsync,
     updateAgent: updateAgent.mutateAsync,
@@ -188,7 +191,7 @@ export function useAIAgentsController() {
     isCreating: createAgent.isPending,
     isUpdating: updateAgent.isPending,
     isDeleting: deleteAgent.isPending,
-    
+
     // Tool mutations
     createTool: createTool.mutateAsync,
     deleteTool: deleteTool.mutateAsync,

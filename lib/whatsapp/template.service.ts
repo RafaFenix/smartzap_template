@@ -8,14 +8,11 @@ import { MetaAPIError } from './errors'
 import { GeneratedTemplate } from '@/lib/ai/services/template-agent'
 
 export class TemplateService {
-    /**
-     * Creates a WhatsApp Template (orchestrates Validation, Transformation, Sending, and DB Update)
-     */
-    async create(data: CreateTemplateInput): Promise<TemplateCreationResult> {
+    async create(data: CreateTemplateInput, instanceId?: string): Promise<TemplateCreationResult> {
         // 1. Authenticate / Get Credentials
-        const credentials = await getWhatsAppCredentials()
+        const credentials = await getWhatsAppCredentials(instanceId)
         if (!credentials) {
-            throw new Error('WhatsApp credentials not found')
+            throw new Error(`WhatsApp credentials not found for instance ${instanceId || 'default'}`)
         }
 
         // 2. Build the Strict Meta Payload

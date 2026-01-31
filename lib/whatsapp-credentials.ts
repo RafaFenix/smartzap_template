@@ -6,6 +6,7 @@
  */
 
 import { redis, isRedisAvailable } from './redis'
+import { instanceDb } from './supabase-db'
 
 const CREDENTIALS_KEY = 'settings:whatsapp:credentials'
 
@@ -18,16 +19,33 @@ export interface WhatsAppCredentials {
 }
 
 /**
- * Get WhatsApp credentials from Redis (primary) or env vars (fallback)
+ * Get WhatsApp credentials from Database (specific instance), Redis (primary global) or env vars (fallback)
  * 
  * Priority:
- * 1. Redis (user-configured via Settings UI)
- * 2. Environment variables (Vercel/deployment configured)
+ * 1. If instanceId provided: Fetch from `instances` table
+ * 2. If no instanceId: Redis (primary global)
+ * 3. Fallback: Environment variables
  * 
  * @returns Credentials or null if not configured
  */
-export async function getWhatsAppCredentials(): Promise<WhatsAppCredentials | null> {
-  // 1. Try Redis first
+export async function getWhatsAppCredentials(instanceId?: string): Promise<WhatsAppCredentials | null> {
+  // 1. Try specific instance if ID provided
+  if (instanceId) {
+    try {
+      const instance = await instanceDb.getById(instanceId)
+      if (instance && instance.phoneNumberId && instance.accessToken) {
+        return {
+          phoneNumberId: instance.phoneNumberId as string,
+          businessAccountId: instance.businessAccountId as string,
+          accessToken: instance.accessToken as string,
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching instance ${instanceId} credentials:`, error)
+    }
+  }
+
+  // 2. Try Redis global settings
   if (isRedisAvailable() && redis) {
     try {
       const stored = await redis.get(CREDENTIALS_KEY)
@@ -48,7 +66,7 @@ export async function getWhatsAppCredentials(): Promise<WhatsAppCredentials | nu
     }
   }
 
-  // 2. Fallback to env vars
+  // 3. Fallback to env vars
   const phoneNumberId = process.env.WHATSAPP_PHONE_ID
   const businessAccountId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID
   const accessToken = process.env.WHATSAPP_TOKEN
@@ -66,17 +84,22 @@ export async function getWhatsAppCredentials(): Promise<WhatsAppCredentials | nu
 }
 
 /**
- * Check if WhatsApp is configured (either in Redis or env vars)
+ * Check if WhatsApp is configured (either for an instance, in Redis or env vars)
  */
-export async function isWhatsAppConfigured(): Promise<boolean> {
-  const credentials = await getWhatsAppCredentials()
+export async function isWhatsAppConfigured(instanceId?: string): Promise<boolean> {
+  const credentials = await getWhatsAppCredentials(instanceId)
   return credentials !== null
 }
 
 /**
  * Get credentials source (for debugging/UI)
  */
-export async function getCredentialsSource(): Promise<'redis' | 'env' | 'none'> {
+export async function getCredentialsSource(instanceId?: string): Promise<'database' | 'redis' | 'env' | 'none'> {
+  if (instanceId) {
+    const instance = await instanceDb.getById(instanceId)
+    if (instance && instance.phoneNumberId) return 'database'
+  }
+
   // Check Redis first
   if (isRedisAvailable() && redis) {
     try {
