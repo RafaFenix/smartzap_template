@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getWhatsAppCredentials } from '@/lib/whatsapp-credentials'
 
 // Credentials are stored in environment variables (secrets)
 // No Redis dependency - env vars are the source of truth
@@ -12,21 +13,22 @@ interface WhatsAppCredentials {
 }
 
 // GET - Fetch credentials from env (without exposing full token)
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const phoneNumberId = process.env.WHATSAPP_PHONE_ID
-    const businessAccountId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID
-    const accessToken = process.env.WHATSAPP_TOKEN
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId')
 
-    if (phoneNumberId && businessAccountId && accessToken) {
+    const credentials = await getWhatsAppCredentials(instanceId || undefined)
+
+    if (credentials && credentials.phoneNumberId && credentials.accessToken) {
       // Fetch display phone number from Meta API
       let displayPhoneNumber: string | undefined
       let verifiedName: string | undefined
 
       try {
         const metaResponse = await fetch(
-          `https://graph.facebook.com/v24.0/${phoneNumberId}?fields=display_phone_number,verified_name`,
-          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+          `https://graph.facebook.com/v24.0/${credentials.phoneNumberId}?fields=display_phone_number,verified_name`,
+          { headers: { 'Authorization': `Bearer ${credentials.accessToken}` } }
         )
         if (metaResponse.ok) {
           const metaData = await metaResponse.json()
@@ -38,9 +40,9 @@ export async function GET() {
       }
 
       return NextResponse.json({
-        source: 'env',
-        phoneNumberId,
-        businessAccountId,
+        source: 'database',
+        phoneNumberId: credentials.phoneNumberId,
+        businessAccountId: credentials.businessAccountId,
         displayPhoneNumber,
         verifiedName,
         hasToken: true,

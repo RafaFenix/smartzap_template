@@ -67,8 +67,9 @@ export const conversationService = {
   /**
    * Obtém detalhes de uma conversa específica
    */
-  getConversation: async (id: string): Promise<ConversationDetailResponse> => {
-    const response = await fetch(`${BASE_URL}/${id}`)
+  getConversation: async (id: string, instanceId?: string): Promise<ConversationDetailResponse> => {
+    const url = instanceId ? `${BASE_URL}/${id}?instanceId=${instanceId}` : `${BASE_URL}/${id}`
+    const response = await fetch(url)
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
@@ -83,9 +84,11 @@ export const conversationService = {
    */
   takeoverConversation: async (
     id: string,
-    agentName?: string
+    agentName?: string,
+    instanceId?: string
   ): Promise<{ success: boolean; conversationId: string; status: string }> => {
-    const response = await fetch(`${BASE_URL}/${id}/takeover`, {
+    const url = instanceId ? `${BASE_URL}/${id}/takeover?instanceId=${instanceId}` : `${BASE_URL}/${id}/takeover`
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ agentName }),
@@ -103,9 +106,11 @@ export const conversationService = {
    * Devolve a conversa para o bot
    */
   releaseConversation: async (
-    id: string
+    id: string,
+    instanceId?: string
   ): Promise<{ success: boolean; conversationId: string; status: string }> => {
-    const response = await fetch(`${BASE_URL}/${id}/release`, {
+    const url = instanceId ? `${BASE_URL}/${id}/release?instanceId=${instanceId}` : `${BASE_URL}/${id}/release`
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
@@ -123,9 +128,14 @@ export const conversationService = {
    */
   sendMessage: async (
     conversationId: string,
-    text: string
+    text: string,
+    instanceId?: string
   ): Promise<{ success: boolean; message: BotMessage; waMessageId?: string }> => {
-    const response = await fetch(`${BASE_URL}/${conversationId}/messages`, {
+    const url = instanceId
+      ? `${BASE_URL}/${conversationId}/messages?instanceId=${instanceId}`
+      : `${BASE_URL}/${conversationId}/messages`
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
@@ -143,9 +153,11 @@ export const conversationService = {
    * Encerra uma conversa
    */
   endConversation: async (
-    id: string
+    id: string,
+    instanceId?: string
   ): Promise<{ success: boolean; conversationId: string; status: string }> => {
-    const response = await fetch(`${BASE_URL}/${id}/end`, {
+    const url = instanceId ? `${BASE_URL}/${id}/end?instanceId=${instanceId}` : `${BASE_URL}/${id}/end`
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
@@ -162,9 +174,14 @@ export const conversationService = {
    * Obtém variáveis de uma conversa
    */
   getConversationVariables: async (
-    conversationId: string
+    conversationId: string,
+    instanceId?: string
   ): Promise<{ conversationId: string; variables: Record<string, string> }> => {
-    const response = await fetch(`${BASE_URL}/${conversationId}/variables`)
+    const url = instanceId
+      ? `${BASE_URL}/${conversationId}/variables?instanceId=${instanceId}`
+      : `${BASE_URL}/${conversationId}/variables`
+
+    const response = await fetch(url)
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
@@ -180,9 +197,14 @@ export const conversationService = {
   updateConversationVariables: async (
     conversationId: string,
     variables: Record<string, string>,
-    deleteKeys?: string[]
+    deleteKeys?: string[],
+    instanceId?: string
   ): Promise<{ conversationId: string; variables: Record<string, string>; success: boolean }> => {
-    const response = await fetch(`${BASE_URL}/${conversationId}/variables`, {
+    const url = instanceId
+      ? `${BASE_URL}/${conversationId}/variables?instanceId=${instanceId}`
+      : `${BASE_URL}/${conversationId}/variables`
+
+    const response = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ variables, deleteKeys }),

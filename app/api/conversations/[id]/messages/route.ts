@@ -43,6 +43,17 @@ export async function POST(request: Request, { params }: RouteParams) {
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId')
+
+    // Validar isolamento de instância
+    if (instanceId && conversation.instanceId !== instanceId) {
+      return NextResponse.json(
+        { error: 'Conversa não encontrada' },
+        { status: 404 }
+      )
+    }
+
     // Verificar se conversa está em atendimento humano
     if (conversation.status !== 'paused') {
       return NextResponse.json(

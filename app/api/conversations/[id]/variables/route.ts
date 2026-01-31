@@ -30,6 +30,17 @@ export async function GET(request: Request, { params }: RouteParams) {
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId')
+
+    // Validar isolamento de instância
+    if (instanceId && conversation.instanceId !== instanceId) {
+      return NextResponse.json(
+        { error: 'Conversa não encontrada' },
+        { status: 404 }
+      )
+    }
+
     // Buscar variáveis
     const variables = await conversationVariableDb.getByConversation(id)
 
@@ -71,6 +82,17 @@ export async function PUT(request: Request, { params }: RouteParams) {
     // Verificar se conversa existe
     const conversation = await botConversationDb.getById(id)
     if (!conversation) {
+      return NextResponse.json(
+        { error: 'Conversa não encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const instanceId = searchParams.get('instanceId')
+
+    // Validar isolamento de instância
+    if (instanceId && conversation.instanceId !== instanceId) {
       return NextResponse.json(
         { error: 'Conversa não encontrada' },
         { status: 404 }

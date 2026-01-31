@@ -98,10 +98,11 @@ export function useConversations(initialFilters: Omit<ConversationListParams, 'o
 
 export function useConversation(id: string | null) {
   const queryClient = useQueryClient()
+  const { currentInstance } = useInstance()
 
   const query = useQuery({
     queryKey: conversationKeys.detail(id || ''),
-    queryFn: () => conversationService.getConversation(id!),
+    queryFn: () => conversationService.getConversation(id!, currentInstance?.id),
     enabled: !!id,
   })
 
@@ -113,7 +114,7 @@ export function useConversation(id: string | null) {
   // Mutations
   const takeoverMutation = useMutation({
     mutationFn: (agentName?: string) =>
-      conversationService.takeoverConversation(id!, agentName),
+      conversationService.takeoverConversation(id!, agentName, currentInstance?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(id!) })
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() })
@@ -121,7 +122,7 @@ export function useConversation(id: string | null) {
   })
 
   const releaseMutation = useMutation({
-    mutationFn: () => conversationService.releaseConversation(id!),
+    mutationFn: () => conversationService.releaseConversation(id!, currentInstance?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(id!) })
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() })
@@ -129,14 +130,14 @@ export function useConversation(id: string | null) {
   })
 
   const sendMessageMutation = useMutation({
-    mutationFn: (text: string) => conversationService.sendMessage(id!, text),
+    mutationFn: (text: string) => conversationService.sendMessage(id!, text, currentInstance?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(id!) })
     },
   })
 
   const endMutation = useMutation({
-    mutationFn: () => conversationService.endConversation(id!),
+    mutationFn: () => conversationService.endConversation(id!, currentInstance?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(id!) })
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() })
@@ -169,10 +170,11 @@ export function useConversation(id: string | null) {
 
 export function useConversationVariables(conversationId: string | null) {
   const queryClient = useQueryClient()
+  const { currentInstance } = useInstance()
 
   const query = useQuery({
     queryKey: conversationKeys.variables(conversationId || ''),
-    queryFn: () => conversationService.getConversationVariables(conversationId!),
+    queryFn: () => conversationService.getConversationVariables(conversationId!, currentInstance?.id),
     enabled: !!conversationId,
   })
 
@@ -183,7 +185,7 @@ export function useConversationVariables(conversationId: string | null) {
     }: {
       variables: Record<string, string>
       deleteKeys?: string[]
-    }) => conversationService.updateConversationVariables(conversationId!, variables, deleteKeys),
+    }) => conversationService.updateConversationVariables(conversationId!, variables, deleteKeys, currentInstance?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.variables(conversationId!) })
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId!) })
