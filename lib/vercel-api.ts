@@ -87,7 +87,7 @@ export async function findProjectByDomain(
     if (domainResponse.ok) {
       const domainData = await domainResponse.json()
       console.log('[findProjectByDomain] Domain API response:', domainData)
-      
+
       // If we got configuredBy (project ID), fetch that project
       if (domainData.configuredBy) {
         const projectResult = await getProject(token, domainData.configuredBy)
@@ -113,15 +113,15 @@ export async function findProjectByDomain(
     const projects: VercelProject[] = data.projects || []
 
     console.log('[findProjectByDomain] Found projects:', projects.map(p => p.name))
-    
+
     // Check custom domains/aliases
     for (const project of projects) {
       const projectAliases = project.alias?.map(a => a.domain.toLowerCase()) || []
       const targetAliases = project.targets?.production?.alias?.map(a => a.toLowerCase()) || []
       const allAliases = [...projectAliases, ...targetAliases]
-      
+
       console.log(`[findProjectByDomain] Project ${project.name} aliases:`, allAliases)
-      
+
       if (allAliases.includes(normalizedDomain)) {
         console.log(`[findProjectByDomain] MATCH by alias! Project: ${project.name}`)
         return { success: true, data: project }
@@ -145,13 +145,13 @@ export async function findProjectByDomain(
           Authorization: `Bearer ${token}`,
         },
       })
-      
+
       if (domainsResponse.ok) {
         const domainsData = await domainsResponse.json()
         const domains = domainsData.domains?.map((d: { name: string }) => d.name.toLowerCase()) || []
-        
+
         console.log(`[findProjectByDomain] Project ${project.name} domains:`, domains)
-        
+
         if (domains.includes(normalizedDomain)) {
           console.log(`[findProjectByDomain] MATCH by project domains! Project: ${project.name}`)
           return { success: true, data: project }
@@ -164,6 +164,16 @@ export async function findProjectByDomain(
       if (projects.length > 0) {
         console.log('[findProjectByDomain] Fallback to first project for localhost')
         return { success: true, data: projects[0] }
+      }
+    }
+
+    // STRATEGY 6: Prefix Match for Vercel Deployment URLs
+    // e.g. project-git-branch-scope.vercel.app or project-hash-scope.vercel.app
+    for (const project of projects) {
+      // Check if domain starts with "name-"
+      if (normalizedDomain.startsWith(`${project.name.toLowerCase()}-`)) {
+        console.log(`[findProjectByDomain] MATCH by prefix! Project: ${project.name}`)
+        return { success: true, data: project }
       }
     }
 
@@ -255,17 +265,17 @@ export async function upsertEnvVar(
       // Update existing - need to use the env var ID
       const getUrl = new URL(`${VERCEL_API_BASE}/v9/projects/${projectId}/env`)
       if (teamId) getUrl.searchParams.set('teamId', teamId)
-      
+
       const listResponse = await fetch(getUrl.toString(), {
         headers: { Authorization: `Bearer ${token}` },
       })
       const listData = await listResponse.json()
       const envWithId = listData.envs?.find((e: { key: string }) => e.key === envVar.key)
-      
+
       if (envWithId) {
         const patchUrl = new URL(`${VERCEL_API_BASE}/v9/projects/${projectId}/env/${envWithId.id}`)
         if (teamId) patchUrl.searchParams.set('teamId', teamId)
-        
+
         const response = await fetch(patchUrl.toString(), {
           method: 'PATCH',
           headers: {
