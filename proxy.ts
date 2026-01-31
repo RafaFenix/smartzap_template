@@ -33,7 +33,12 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/api/auth/status') ||
         pathname === '/login' ||
         pathname === '/login/' ||
-        pathname.startsWith('/api/health')
+        pathname.startsWith('/api/health') ||
+        pathname.startsWith('/documentation') ||
+        pathname === '/' ||
+        pathname.startsWith('/campaigns') ||
+        pathname.startsWith('/contacts') ||
+        pathname.startsWith('/templates')
 
     if (isExempted) {
         console.log(`☢️ [PROXY-EXEMPT] ALLOWING: ${pathname} | Referer: ${request.headers.get('referer') || 'Direct'}`)
