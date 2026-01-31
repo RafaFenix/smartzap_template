@@ -31,6 +31,7 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/api/settings') ||
         pathname.startsWith('/api/instances') ||
         pathname.startsWith('/api/auth/status') ||
+        pathname.startsWith('/setup') ||
         pathname === '/login' ||
         pathname === '/login/' ||
         pathname.startsWith('/api/health') ||
