@@ -23,7 +23,7 @@ export interface HealthStatus {
         }
         whatsapp: {
             status: 'ok' | 'error' | 'not_configured'
-            source?: 'redis' | 'env' | 'none'
+            source?: 'redis' | 'env' | 'database' | 'none'
             phoneNumber?: string
             message?: string
         }
