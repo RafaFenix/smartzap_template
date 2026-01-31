@@ -24,7 +24,8 @@ import {
     Sparkles,
     ExternalLink,
     ChevronRight,
-    Workflow
+    Workflow,
+    Smartphone
 } from 'lucide-react'
 import React from 'react'
 import { HealthStatus } from '@/lib/health-check'
@@ -566,7 +567,7 @@ export function DashboardShell({
         { path: '/conversations', label: 'Conversas', icon: MessageCircle, hidden: true },
         { path: '/templates', label: 'Templates', icon: FileText },
         { path: '/contacts', label: 'Contatos', icon: Users },
-        { path: '/settings', label: 'Configurações', icon: Settings },
+        { path: '/settings', label: 'Meus Clientes', icon: Smartphone },
     ].filter(item => !item.hidden)
 
     const getPageTitle = (path: string) => {
@@ -579,7 +580,7 @@ export function DashboardShell({
         if (path.startsWith('/conversations/')) return 'Conversa'
         if (path === '/templates') return 'Templates'
         if (path.startsWith('/contacts')) return 'Contatos'
-        if (path.startsWith('/settings')) return 'Configurações'
+        if (path.startsWith('/settings')) return 'Meus Clientes'
         return 'App'
     }
 

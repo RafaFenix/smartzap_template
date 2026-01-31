@@ -2215,15 +2215,22 @@ export const templateProjectDb = {
 // ============================================================================
 
 export const instanceDb = {
-    getAll: async (): Promise<Instance[]> => {
+    getAll: async (instanceId?: string): Promise<Instance[]> => {
         if (!isSupabaseConfigured()) {
             console.warn('[instanceDb.getAll] Supabase not configured, returning empty list');
             return [];
         }
-        const { data, error } = await supabase
+
+        let query = supabase
             .from('instances')
             .select('*')
             .order('created_at', { ascending: false })
+
+        if (instanceId) {
+            query = query.eq('id', instanceId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -2233,21 +2240,25 @@ export const instanceDb = {
             phoneNumberId: row.phone_number_id,
             businessAccountId: row.business_account_id,
             accessToken: row.access_token,
-            status: row.status as Instance['status'],
+            status: row.status,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
+            // Agency Metadata
+            clientName: row.client_name,
+            description: row.description,
+            color: row.color,
         }))
     },
 
-    getById: async (id: string): Promise<Instance | undefined> => {
-        if (!isSupabaseConfigured()) return undefined;
+    getById: async (id: string): Promise<Instance | null> => {
+        if (!isSupabaseConfigured()) return null;
         const { data, error } = await supabase
             .from('instances')
             .select('*')
             .eq('id', id)
             .single()
 
-        if (error || !data) return undefined
+        if (error || !data) return null
 
         return {
             id: data.id,
@@ -2258,10 +2269,24 @@ export const instanceDb = {
             status: data.status as Instance['status'],
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            // Agency Metadata
+            clientName: data.client_name,
+            description: data.description,
+            color: data.color,
         }
     },
 
-    create: async (instance: Omit<Instance, 'id' | 'createdAt' | 'updatedAt'>): Promise<Instance> => {
+    create: async (instance: {
+        name: string
+        phoneNumberId: string
+        accessToken: string
+        businessAccountId?: string
+        status?: string
+        // Agency Metadata
+        clientName?: string
+        description?: string
+        color?: string
+    }): Promise<Instance> => {
         if (!isSupabaseConfigured()) throw new Error('Database not configured');
         const id = `inst_${Math.random().toString(36).substr(2, 9)}`
         const now = new Date().toISOString()
@@ -2277,6 +2302,10 @@ export const instanceDb = {
                 status: instance.status || 'active',
                 created_at: now,
                 updated_at: now,
+                // Agency Metadata
+                client_name: instance.clientName,
+                description: instance.description,
+                color: instance.color,
             })
             .select()
             .single()
@@ -2284,14 +2313,22 @@ export const instanceDb = {
         if (error) throw error
 
         return {
-            ...instance,
             id,
+            name: instance.name,
+            phoneNumberId: instance.phoneNumberId,
+            businessAccountId: instance.businessAccountId,
+            accessToken: instance.accessToken,
+            status: instance.status as any || 'active',
             createdAt: now,
             updatedAt: now,
+            // Agency Metadata
+            clientName: instance.clientName,
+            description: instance.description,
+            color: instance.color,
         }
     },
 
-    update: async (id: string, updates: Partial<Instance>): Promise<Instance | undefined> => {
+    update: async (id: string, updates: Partial<Instance>): Promise<Instance | null> => {
         if (!isSupabaseConfigured()) throw new Error('Database not configured');
         const updateData: Record<string, unknown> = {}
 
@@ -2300,6 +2337,10 @@ export const instanceDb = {
         if (updates.businessAccountId !== undefined) updateData.business_account_id = updates.businessAccountId
         if (updates.accessToken !== undefined) updateData.access_token = updates.accessToken
         if (updates.status !== undefined) updateData.status = updates.status
+        // Agency Metadata
+        if (updates.clientName !== undefined) updateData.client_name = updates.clientName
+        if (updates.description !== undefined) updateData.description = updates.description
+        if (updates.color !== undefined) updateData.color = updates.color
 
         updateData.updated_at = new Date().toISOString()
 

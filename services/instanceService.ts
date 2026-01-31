@@ -28,7 +28,7 @@ export const instanceService = {
     /**
      * Create a new instance (Connect new WhatsApp number)
      */
-    create: async (data: { name: string; phoneNumberId: string; accessToken: string; businessAccountId?: string }): Promise<Instance> => {
+    create: async (data: { name: string; phoneNumberId: string; accessToken: string; businessAccountId?: string; clientName?: string; description?: string; color?: string }): Promise<Instance> => {
         const response = await fetch('/api/instances', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

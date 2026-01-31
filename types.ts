@@ -70,6 +70,10 @@ export interface Instance {
   status: 'active' | 'disconnected' | 'error';
   createdAt: string;
   updatedAt?: string;
+  // Agency Metadata
+  clientName?: string;
+  description?: string;
+  color?: string;
 }
 
 export interface Campaign {

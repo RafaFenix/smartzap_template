@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { name, phoneNumberId, accessToken, businessAccountId } = body
+        const { name, phoneNumberId, accessToken, businessAccountId, clientName, description, color } = body
 
         if (!name || !phoneNumberId || !accessToken) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -25,7 +25,10 @@ export async function POST(request: NextRequest) {
             phoneNumberId,
             accessToken,
             businessAccountId,
-            status: 'active'
+            status: 'active',
+            clientName,
+            description,
+            color
         })
 
         return NextResponse.json(instance)
