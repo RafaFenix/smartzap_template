@@ -24,6 +24,15 @@ interface UseRealtimeStatusOptions {
  * @param options - Configuration options
  * @returns Campaign data and status
  */
+import { useInstance } from '@/components/providers/InstanceProvider';
+
+/**
+ * Hook for real-time campaign status updates
+ * 
+ * @param campaignId - The campaign ID to monitor
+ * @param options - Configuration options
+ * @returns Campaign data and status
+ */
 export const useRealtimeStatus = (
   campaignId: string | undefined,
   options: UseRealtimeStatusOptions = {}
@@ -31,6 +40,8 @@ export const useRealtimeStatus = (
   const { interval = 2000, enabled = true } = options;
   const queryClient = useQueryClient();
   const pollCountRef = useRef(0);
+  const { currentInstance } = useInstance();
+  const instanceId = currentInstance?.id;
 
   // Main campaign query
   const {
@@ -39,39 +50,39 @@ export const useRealtimeStatus = (
     error,
     refetch,
   } = useQuery({
-    queryKey: ['campaign', campaignId],
+    queryKey: ['campaign', campaignId, instanceId],
     queryFn: () => campaignService.getById(campaignId!),
-    enabled: !!campaignId && enabled && !campaignId.startsWith('temp_'), // Don't fetch temp campaigns from API
+    enabled: !!campaignId && enabled && !campaignId.startsWith('temp_') && !!instanceId, // Don't fetch temp campaigns from API
     staleTime: 1000, // Consider data stale after 1 second
     refetchOnMount: 'always', // Always fetch fresh data when component mounts
   });
-  
+
   // For temp campaigns, use cached data directly
-  const cachedCampaign = queryClient.getQueryData<Campaign>(['campaign', campaignId]);
+  const cachedCampaign = queryClient.getQueryData<Campaign>(['campaign', campaignId, instanceId]);
 
   // Determine if we should be polling
   const shouldPoll = useCallback(() => {
     if (!campaign || !enabled) return false;
-    
+
     // NEVER poll completed campaigns
     if (campaign.status === CampaignStatus.COMPLETED) return false;
-    
+
     // NEVER poll failed campaigns
     if (campaign.status === CampaignStatus.FAILED) return false;
-    
+
     // NEVER poll paused campaigns
     if (campaign.status === CampaignStatus.PAUSED) return false;
-    
+
     // NEVER poll draft campaigns
     if (campaign.status === CampaignStatus.DRAFT) return false;
-    
+
     // Check if all messages have been processed (sent + failed >= recipients)
     const totalProcessed = (campaign.sent || 0) + (campaign.failed || 0);
     const isComplete = totalProcessed >= (campaign.recipients || 0);
-    
+
     // If all processed, don't poll (even if status hasn't updated yet)
     if (isComplete && campaign.recipients > 0) return false;
-    
+
     // Only poll for active sending campaigns
     return campaign.status === CampaignStatus.SENDING;
   }, [campaign, enabled]);
@@ -79,20 +90,20 @@ export const useRealtimeStatus = (
   // Update stats from backend
   const updateStats = useCallback(async () => {
     if (!campaignId) return;
-    
+
     try {
       // Update local storage with real stats from Redis
-      await campaignService.updateStats(campaignId);
-      
+      await campaignService.updateStats(campaignId, instanceId);
+
       // Invalidate queries to reflect new data
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      
+
       pollCountRef.current++;
     } catch (error) {
       console.error('Failed to update campaign stats:', error);
     }
-  }, [campaignId, queryClient]);
+  }, [campaignId, queryClient, instanceId]);
 
   // Polling effect
   useEffect(() => {
@@ -115,7 +126,7 @@ export const useRealtimeStatus = (
 
     const scheduledTime = new Date(campaign.scheduledAt).getTime();
     const now = Date.now();
-    
+
     // If scheduled time has passed, start the campaign
     if (scheduledTime <= now) {
       campaignService.start(campaign.id).then(() => {
@@ -130,7 +141,7 @@ export const useRealtimeStatus = (
           queryClient.invalidateQueries({ queryKey: ['campaigns'] });
         });
       }, scheduledTime - now);
-      
+
       return () => clearTimeout(timeout);
     }
   }, [campaign, queryClient]);
@@ -151,6 +162,8 @@ export const useRealtimeStatus = (
 export const useRealtimeCampaigns = (options: UseRealtimeStatusOptions = {}) => {
   const { interval = 5000, enabled = true } = options;
   const queryClient = useQueryClient();
+  const { currentInstance } = useInstance();
+  const instanceId = currentInstance?.id;
 
   const {
     data: campaigns,
@@ -158,14 +171,14 @@ export const useRealtimeCampaigns = (options: UseRealtimeStatusOptions = {}) => 
     error,
     refetch,
   } = useQuery({
-    queryKey: ['campaigns'],
-    queryFn: campaignService.getAll,
-    enabled,
+    queryKey: ['campaigns', instanceId],
+    queryFn: () => campaignService.getAll(instanceId),
+    enabled: !!instanceId && enabled,
     staleTime: 2000,
   });
 
   // Find active campaigns that need polling
-  const activeCampaigns = campaigns?.filter(c => 
+  const activeCampaigns = campaigns?.filter(c =>
     c.status === CampaignStatus.SENDING || c.status === CampaignStatus.SCHEDULED
   ) || [];
 
@@ -178,7 +191,7 @@ export const useRealtimeCampaigns = (options: UseRealtimeStatusOptions = {}) => 
       for (const campaign of activeCampaigns) {
         await campaignService.updateStats(campaign.id);
       }
-      
+
       // Invalidate to refresh UI
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
     }, interval);
@@ -189,15 +202,15 @@ export const useRealtimeCampaigns = (options: UseRealtimeStatusOptions = {}) => 
   // Check scheduled campaigns that need to start
   useEffect(() => {
     if (!campaigns) return;
-    
-    const scheduledCampaigns = campaigns.filter(c => 
+
+    const scheduledCampaigns = campaigns.filter(c =>
       c.status === CampaignStatus.SCHEDULED && c.scheduledAt
     );
 
     for (const campaign of scheduledCampaigns) {
       const scheduledTime = new Date(campaign.scheduledAt!).getTime();
       const now = Date.now();
-      
+
       if (scheduledTime <= now) {
         // Start immediately
         campaignService.start(campaign.id).then(() => {

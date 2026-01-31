@@ -126,9 +126,12 @@ export const campaignService = {
   },
 
   // Fetch real-time status from Redis
-  getRealStatus: async (id: string): Promise<CampaignStatusResponse | null> => {
+  getRealStatus: async (id: string, instanceId?: string): Promise<CampaignStatusResponse | null> => {
     try {
-      const response = await fetch(`/api/campaign/${id}/status`);
+      const url = instanceId
+        ? `/api/campaign/${id}/status?instanceId=${instanceId}`
+        : `/api/campaign/${id}/status`;
+      const response = await fetch(url);
       if (response.ok) {
         return await response.json();
       }
@@ -352,8 +355,8 @@ export const campaignService = {
   },
 
   // Update campaign stats from real-time polling
-  updateStats: async (id: string): Promise<Campaign | undefined> => {
-    const realStatus = await campaignService.getRealStatus(id);
+  updateStats: async (id: string, instanceId?: string): Promise<Campaign | undefined> => {
+    const realStatus = await campaignService.getRealStatus(id, instanceId);
 
     if (realStatus && realStatus.stats.total > 0) {
       // Get campaign from Database
@@ -363,7 +366,11 @@ export const campaignService = {
       const isComplete = realStatus.stats.sent + realStatus.stats.failed >= campaign.recipients;
 
       // Update in Database
-      const response = await fetch(`/api/campaigns/${id}`, {
+      const url = instanceId
+        ? `/api/campaigns/${id}?instanceId=${instanceId}`
+        : `/api/campaigns/${id}`;
+
+      const response = await fetch(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
