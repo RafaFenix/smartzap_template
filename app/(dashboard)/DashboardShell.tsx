@@ -152,7 +152,7 @@ const OnboardingOverlay = ({
         .every(s => s.status === 'configured')
 
     return (
-        <div className="min-h-screen bg-grid-dots flex items-center justify-center p-6">
+        <div className="w-full min-h-full bg-grid-dots flex items-center justify-center p-6">
             <div className="max-w-2xl w-full">
                 {/* Header */}
                 <div className="text-center mb-10">
@@ -545,16 +545,12 @@ export function DashboardShell({
     console.log('🔍 [DashboardShell] isSettingsPath:', isSettingsPath);
 
     // Show onboarding overlay ONLY if critical infrastructure (DB) is missing
-    // AND we are NOT on a settings or setup path
-    if (needsSetup && pathname && !isSettingsPath && !isSetupPath) {
-        console.log('🚀 [DashboardShell] Showing OnboardingOverlay');
-        return (
-            <OnboardingOverlay
-                health={healthStatus || null}
-                isLoading={isHealthFetching}
-                onRefresh={() => refetchHealth()}
-            />
-        )
+    // AND we are NOT on a settings or setup path or documentation
+    const isDocumentationPath = pathname?.startsWith('/documentation');
+    const showBlockingOverlay = needsSetup && pathname && !isSettingsPath && !isSetupPath && !isDocumentationPath;
+
+    if (showBlockingOverlay) {
+        console.log('🚀 [DashboardShell] Setup needed, rendering overlay in content area');
     }
 
     const missingServices = []
@@ -733,7 +729,15 @@ export function DashboardShell({
                         {/* Account alerts banner - hide in fullscreen mode */}
                         {!pathname?.includes('/campaigns/new') && <AccountAlertBanner />}
 
-                        {children}
+                        {showBlockingOverlay ? (
+                            <OnboardingOverlay
+                                health={healthStatus || null}
+                                isLoading={isHealthFetching}
+                                onRefresh={() => refetchHealth()}
+                            />
+                        ) : (
+                            children
+                        )}
                     </div>
                 </main>
             </div>
