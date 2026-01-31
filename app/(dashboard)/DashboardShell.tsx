@@ -26,7 +26,8 @@ import {
     ChevronRight,
     Workflow,
     Smartphone,
-    Book
+    Book,
+    Wrench
 } from 'lucide-react'
 import React from 'react'
 import { HealthStatus } from '@/lib/health-check'
@@ -566,6 +567,7 @@ export function DashboardShell({
         { path: '/contacts', label: 'Contatos', icon: Users },
         { path: '/settings', label: 'Meus Clientes', icon: Smartphone },
         { path: '/documentation', label: 'Documentação', icon: Book },
+        { path: '/setup/start', label: 'Configuração inicial', icon: Wrench },
     ].filter(item => !item.hidden)
 
     const getPageTitle = (path: string) => {
