@@ -51,9 +51,11 @@ export async function POST(request: NextRequest) {
         }
 
         // Read SQL files (default 'migrate' action)
-        const migrationsDir = path.join(process.cwd(), 'lib/migrations')
+        // Hardcoded list for safety & ordering
+        const migrationsDir = path.join(process.cwd(), 'supabase/migrations') // Changed to supabase/migrations
         const files = [
-            '0001_initial_schema.sql'
+            '20260126_add_instances.sql', // Contains initial schema + instances
+            '20260131_agency_metadata.sql' // Agency metadata
         ]
 
         let fullSql = ''
